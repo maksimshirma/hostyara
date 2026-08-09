@@ -1,0 +1,53 @@
+{
+  "name": "hostyara",
+  "version": "0.0.1",
+  "description": "Host/shell application for a family super-app with Module Federation and iframes",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@storybook/react": "^10.5.7",
+    "@storybook/react-vite": "^10.5.7",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.14.12",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "husky": "^9.1.7",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
+    "storybook": "^10.5.7",
+    "ts-jest": "^29.4.12",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.10"
+  },
+  "packageManager": "yarn@4.12.0+sha512.f45ab632439a67f8bc759bf32ead036a1f413287b9042726b7cc4818b7b49e14e9423ba49b18f9e06ea4941c1ad062385b1d8760a8d5091a1a31e5f6219afca8"
+}
