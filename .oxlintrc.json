@@ -14,11 +14,11 @@
     }
   },
   "ignorePatterns": [
-    "dist/",
-    "node_modules/",
-    "storybook-static/",
-    "coverage/",
-    "test-results/",
-    "playwright-report/"
+    "**/dist/",
+    "**/node_modules/",
+    "**/storybook-static/",
+    "**/coverage/",
+    "**/test-results/",
+    "**/playwright-report/"
   ]
 }

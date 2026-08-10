@@ -1,12 +1,17 @@
 {
   "name": "hostyara",
   "version": "0.0.1",
+  "private": true,
   "description": "Host/shell application for a family super-app with Module Federation and iframes",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "type": "commonjs",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "dev": "yarn workspace @hostyara/host dev",
+    "build": "yarn workspace @hostyara/host build",
+    "preview": "yarn workspace @hostyara/host preview",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
@@ -14,10 +19,10 @@
     "format:check": "oxfmt --check .",
     "test": "jest",
     "test:watch": "jest --watch",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "e2e": "yarn workspace @hostyara/host e2e",
+    "e2e:ui": "yarn workspace @hostyara/host e2e:ui",
+    "storybook": "yarn workspace @hostyara/host storybook",
+    "build-storybook": "yarn workspace @hostyara/host build-storybook",
     "prepare": "husky"
   },
   "dependencies": {

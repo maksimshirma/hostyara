@@ -1,4 +1,4 @@
-import Button from "./components/Button/Button";
+import { Button } from "@hostyara/ui";
 import styles from "./App.module.css";
 
 export default function App() {
