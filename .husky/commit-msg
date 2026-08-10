@@ -1,0 +1,21 @@
+commit_msg_file="$1"
+commit_msg=$(head -1 "$commit_msg_file")
+
+if echo "$commit_msg" | grep -qE '^(Merge|Revert) '; then
+  exit 0
+fi
+
+pattern='^(feat|fix|refactor|perf|test|docs|build|ci|chore)(\([a-z0-9-]+\))?!?: [a-z0-9].*[^.]$'
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo "Invalid commit message:"
+  echo "  $commit_msg"
+  echo ""
+  echo "Expected: <type>(<scope>): <description>"
+  echo "  type:        feat fix refactor perf test docs build ci chore"
+  echo "  scope:       optional, lowercase, e.g. (sdk) (host) (ci)"
+  echo "  description: lowercase start, no trailing period"
+  echo ""
+  echo "Example: feat(sdk): add permission check helper"
+  exit 1
+fi

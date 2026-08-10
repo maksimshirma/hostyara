@@ -72,9 +72,10 @@ A modern React + TypeScript frontend for the family super-app host/shell applica
 
 ## Git Hooks
 
-Husky is configured with two automatic hooks:
+Husky is configured with three automatic hooks:
 
 - **pre-commit**: Runs linting (`yarn lint`) and format check (`yarn format:check`)
+- **commit-msg**: Validates commit message follows [Conventional Commits](https://www.conventionalcommits.org/)
 - **pre-push**: Runs type checking (`yarn typecheck`) and tests (`yarn test`)
 
 If a hook fails, fix the issue and try again. To bypass hooks (not recommended):
