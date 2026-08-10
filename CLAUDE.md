@@ -51,3 +51,26 @@
 - **No Workarounds**: Fix root causes.
 - **Minimal Impact**: Change only what is necessary.
 - **Verify Before Done**: Verify the result instead of assuming it works.
+
+## Commit Messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`
+
+- **type**: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`
+- **scope** (optional): affected area, e.g. `host`, `sdk`, `auth`, `ci`, `button`
+- **description**: imperative mood, lowercase, no trailing period
+
+Breaking changes: add `!` after type/scope (`feat(sdk)!: ...`) and/or a `BREAKING CHANGE:` footer explaining the change.
+
+Body (optional, blank line after subject): explain _why_, not _what_ — the diff already shows what changed.
+
+Examples:
+
+```
+feat(sdk): add permission check helper for microfrontends
+fix(ci): enable corepack before setup-node to resolve yarn version
+refactor(host): simplify remote registry lookup
+docs: add commit message guidelines
+```
+
+Keep commits focused — one logical change per commit. Do not mix unrelated fixes/features in one commit.
