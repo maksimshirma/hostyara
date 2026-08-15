@@ -16,3 +16,35 @@ p {
   margin-bottom: var(--ui-spacing-xl);
   color: var(--ui-color-text-secondary);
 }
+
+.themeSwitcher {
+  display: inline-flex;
+  gap: var(--ui-spacing-2xs);
+  margin-top: var(--ui-spacing-lg);
+  padding: var(--ui-spacing-3xs);
+  border-radius: var(--ui-border-radius-md);
+  background-color: var(--ui-color-bg-subtle);
+  border: 1px solid var(--ui-color-border);
+}
+
+.themeOption,
+.themeOptionActive {
+  padding: var(--ui-spacing-2xs) var(--ui-spacing-sm);
+  border: none;
+  border-radius: var(--ui-border-radius-sm);
+  font-size: var(--ui-font-size-sm);
+  background: transparent;
+  color: var(--ui-color-text-secondary);
+}
+
+.themeOptionActive {
+  background-color: var(--ui-color-surface);
+  color: var(--ui-color-text);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.themeStatus {
+  margin-top: var(--ui-spacing-sm);
+  font-size: var(--ui-font-size-xs);
+  color: var(--ui-color-text-secondary);
+}
