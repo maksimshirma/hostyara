@@ -903,6 +903,66 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@hostyara/contract@workspace:^, @hostyara/contract@workspace:packages/contract":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/contract@workspace:packages/contract"
+  languageName: unknown
+  linkType: soft
+
+"@hostyara/event-bus@workspace:^, @hostyara/event-bus@workspace:packages/event-bus":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/event-bus@workspace:packages/event-bus"
+  languageName: unknown
+  linkType: soft
+
+"@hostyara/host@workspace:apps/host":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/host@workspace:apps/host"
+  dependencies:
+    "@hostyara/contract": "workspace:^"
+    "@hostyara/event-bus": "workspace:^"
+    "@hostyara/lifecycle": "workspace:^"
+    "@hostyara/registry": "workspace:^"
+    "@hostyara/sdk": "workspace:^"
+    "@hostyara/ui": "workspace:^"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+  languageName: unknown
+  linkType: soft
+
+"@hostyara/lifecycle@workspace:^, @hostyara/lifecycle@workspace:packages/lifecycle":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/lifecycle@workspace:packages/lifecycle"
+  dependencies:
+    "@hostyara/contract": "workspace:^"
+  languageName: unknown
+  linkType: soft
+
+"@hostyara/registry@workspace:^, @hostyara/registry@workspace:packages/registry":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/registry@workspace:packages/registry"
+  dependencies:
+    "@hostyara/contract": "workspace:^"
+  languageName: unknown
+  linkType: soft
+
+"@hostyara/sdk@workspace:^, @hostyara/sdk@workspace:packages/sdk":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/sdk@workspace:packages/sdk"
+  dependencies:
+    "@hostyara/contract": "workspace:^"
+  languageName: unknown
+  linkType: soft
+
+"@hostyara/ui@workspace:^, @hostyara/ui@workspace:packages/ui":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/ui@workspace:packages/ui"
+  peerDependencies:
+    react: ^19.0.0
+    react-dom: ^19.0.0
+  languageName: unknown
+  linkType: soft
+
 "@isaacs/cliui@npm:^8.0.2":
   version: 8.0.2
   resolution: "@isaacs/cliui@npm:8.0.2"

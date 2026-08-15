@@ -1,0 +1,25 @@
+{
+  "name": "@hostyara/host",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "dependencies": {
+    "@hostyara/contract": "workspace:^",
+    "@hostyara/event-bus": "workspace:^",
+    "@hostyara/lifecycle": "workspace:^",
+    "@hostyara/registry": "workspace:^",
+    "@hostyara/sdk": "workspace:^",
+    "@hostyara/ui": "workspace:^",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  }
+}

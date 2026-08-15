@@ -6,8 +6,7 @@ test-results/
 coverage/
 .DS_Store
 *.log
-*.js
-*.d.ts
+*.tsbuildinfo
 .env
 .env.local
 .env.*.local

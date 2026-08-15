@@ -1,6 +1,6 @@
 # Hostyara
 
-A modern React + TypeScript frontend for the family super-app host/shell application. Built on Vite with a complete toolchain including Jest, Playwright, Storybook, Oxlint, and Oxfmt.
+A React + TypeScript Yarn Workspaces monorepo for the family super-app host/shell architecture: a shell app (`apps/host`) plus the shared contracts, SDK, design system, lifecycle API, event bus, and app registry that microfrontends will integrate against. Built on Vite with a complete toolchain including Jest, Playwright, Storybook, Oxlint, and Oxfmt.
 
 ## Prerequisites
 
@@ -29,6 +29,8 @@ A modern React + TypeScript frontend for the family super-app host/shell applica
 
    App runs at `http://localhost:3000`
 
+All commands below run from the repo root and operate on the whole workspace unless noted. To target a single package directly: `yarn workspace @hostyara/<name> <script>` (e.g. `yarn workspace @hostyara/host dev`).
+
 ## Available Commands
 
 ### Development
@@ -40,10 +42,10 @@ A modern React + TypeScript frontend for the family super-app host/shell applica
 
 ### Building & Production
 
-| Command          | Description                              |
-| ---------------- | ---------------------------------------- |
-| `yarn build`     | TypeScript check + Vite build to `dist/` |
-| `yarn typecheck` | Run TypeScript type checking (non-emit)  |
+| Command          | Description                                        |
+| ---------------- | -------------------------------------------------- |
+| `yarn build`     | TypeScript check + Vite build to `apps/host/dist/` |
+| `yarn typecheck` | Run TypeScript type checking (non-emit)            |
 
 ### Testing
 
@@ -65,10 +67,10 @@ A modern React + TypeScript frontend for the family super-app host/shell applica
 
 ### Storybook
 
-| Command                | Description                                |
-| ---------------------- | ------------------------------------------ |
-| `yarn storybook`       | Start Storybook at `http://localhost:6006` |
-| `yarn build-storybook` | Build Storybook to `storybook-static/`     |
+| Command                | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| `yarn storybook`       | Start Storybook at `http://localhost:6006`       |
+| `yarn build-storybook` | Build Storybook to `apps/host/storybook-static/` |
 
 ## Git Hooks
 
@@ -89,34 +91,55 @@ git push --no-verify
 
 ```
 hostyara/
-├── src/
-│   ├── components/          # Reusable React components
-│   │   └── Button/          # Example component with stories and tests
-│   ├── App.tsx              # Root app component
-│   ├── App.module.css       # App styling
-│   ├── index.css            # Global styles
-│   ├── main.tsx             # Vite entry point
-│   ├── setupTests.ts        # Jest configuration
-│   └── vite-env.d.ts        # TypeScript ambient declarations
-├── e2e/                     # Playwright E2E tests
-├── .storybook/              # Storybook configuration
-├── .husky/                  # Git hooks
-├── vite.config.ts           # Vite configuration
-├── jest.config.ts           # Jest configuration
-├── playwright.config.ts     # Playwright configuration
-├── tsconfig.json            # TypeScript config
-├── package.json             # Dependencies and scripts
-└── README.md                # This file
+├── packages/
+│   ├── contract/             # @hostyara/contract — shared typed contracts/schemas
+│   ├── sdk/                  # @hostyara/sdk — public Host SDK (auth, navigation, notifications, feature flags, permissions)
+│   ├── ui/                   # @hostyara/ui — design system (tokens, theme, React components)
+│   ├── lifecycle/            # @hostyara/lifecycle — microfrontend lifecycle API
+│   ├── event-bus/            # @hostyara/event-bus — typed host<->app pub/sub (skeleton)
+│   └── registry/             # @hostyara/registry — in-memory app metadata registry
+├── apps/
+│   └── host/                 # @hostyara/host — the shell app
+│       ├── src/              # App source (main.tsx, App.tsx, ...)
+│       ├── e2e/              # Playwright E2E tests
+│       ├── .storybook/       # Storybook config (also picks up packages/*/src stories)
+│       ├── index.html
+│       ├── vite.config.ts
+│       └── playwright.config.ts
+├── types/
+│   └── css-modules.d.ts      # shared CSS Modules ambient declaration
+├── .husky/                   # Git hooks
+├── tsconfig.base.json        # shared strict compilerOptions
+├── tsconfig.json             # root workspace-wide typecheck config
+├── jest.config.ts            # Jest config (covers packages/ + apps/)
+├── jest.setup.ts             # shared Jest setup (jest-dom matchers)
+├── .oxlintrc.json            # Oxlint config
+├── package.json              # workspace root, shared devDependencies, scripts
+└── README.md                 # This file
 ```
+
+Each package under `packages/*` and `apps/host` has its own minimal `package.json` + `tsconfig.json` (extending `tsconfig.base.json`). Library packages have **no build step** — `main`/`types` point straight at `src/index.ts`; Yarn's workspace symlinks (in `node_modules/@hostyara/*`) let Vite/Jest/tsc resolve and transpile them like any other package, since they're never published, only consumed inside this monorepo.
 
 ## Configuration Files
 
-- **`tsconfig.json`**: TypeScript strict mode enabled, target ES2022, path aliases (`@/*`)
-- **`.oxlintrc.json`**: Oxlint with React and TypeScript plugins
-- **`vite.config.ts`**: Vite with React Fast Refresh, path aliases, port 3000
-- **`jest.config.ts`**: ts-jest preset, jsdom environment, CSS module mocking
-- **`playwright.config.ts`**: Chromium browser, local dev server integration
-- **`.storybook/`**: React + Vite framework, autodocs enabled
+- **`tsconfig.base.json`** / **`tsconfig.json`**: TypeScript strict mode, target ES2022, workspace-wide typecheck via `yarn typecheck`
+- **`.oxlintrc.json`**: Oxlint with React and TypeScript plugins, covers the whole workspace
+- **`apps/host/vite.config.ts`**: Vite with React Fast Refresh, `@/*` alias, port 3000
+- **`jest.config.ts`**: ts-jest preset, jsdom environment, CSS module mocking, discovers tests in `packages/*/src` and `apps/*/src`
+- **`apps/host/playwright.config.ts`**: Chromium browser, local dev server integration
+- **`apps/host/.storybook/`**: React + Vite framework, autodocs enabled, stories from both `apps/host/src` and `packages/*/src`
+
+## Packages
+
+| Package               | Purpose                                                                                                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `@hostyara/contract`  | Shared typed contracts/schemas between host and microfrontends (`User`, `AppManifest`, `HostContext`, `MicrofrontendProps`) |
+| `@hostyara/sdk`       | Public typed Host SDK surface: `AuthSDK`, `NavigationSDK`, `NotificationsSDK`, `FeatureFlagsSDK`, `PermissionsSDK`          |
+| `@hostyara/ui`        | Shared design system: tokens, theme, React components (e.g. `Button`)                                                       |
+| `@hostyara/lifecycle` | Standardized microfrontend lifecycle API (`bootstrap`/`mount`/`unmount`/`update`/`prefetch`/`destroy`)                      |
+| `@hostyara/event-bus` | Typed host<->app pub/sub — skeleton only, implementation pending                                                            |
+| `@hostyara/registry`  | In-memory `AppRegistry` for app metadata, routes, versions, permissions, health status                                      |
+| `@hostyara/host`      | The shell app: auth, session, routing, layout, orchestration                                                                |
 
 ## Environment
 
