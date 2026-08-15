@@ -5,7 +5,7 @@ test("homepage loads and contains expected content", async ({ page }) => {
 
   await expect(page).toHaveTitle(/Hostyara/i);
   await expect(page.locator("h1")).toContainText("Welcome to Hostyara");
-  await expect(page.locator("p")).toContainText("Host/shell application");
+  await expect(page.locator("p").first()).toContainText("Host/shell application");
 });
 
 test("button is clickable", async ({ page }) => {
