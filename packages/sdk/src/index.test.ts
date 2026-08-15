@@ -1,7 +1,7 @@
 import { HostSDK } from "./index";
 
 describe("@hostyara/sdk", () => {
-  it("composes a HostSDK from typed capability interfaces", () => {
+  it("re-exports HostSDK from @hostyara/contracts", () => {
     const sdk: HostSDK = {
       auth: {
         getUser: () => null,
@@ -19,6 +19,11 @@ describe("@hostyara/sdk", () => {
       },
       permissions: {
         hasPermission: () => false,
+      },
+      sharedState: {
+        get: () => ({}),
+        subscribe: () => () => {},
+        set: () => {},
       },
     };
 

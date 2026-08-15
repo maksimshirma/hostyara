@@ -1,4 +1,4 @@
-import { User } from "@hostyara/contract";
+import { User } from "./user";
 
 export interface AuthSDK {
   getUser(): User | null;

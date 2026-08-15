@@ -1,28 +1,28 @@
-import { AppManifest, AppHealthStatus } from "@hostyara/contract";
+import { AppHealthStatus, AppManifest, RegistryEntry } from "@hostyara/contracts";
 
 export class AppRegistry {
-  private apps = new Map<string, AppManifest>();
+  private entries = new Map<string, RegistryEntry>();
 
   register(manifest: AppManifest): void {
-    this.apps.set(manifest.id, manifest);
+    this.entries.set(manifest.id, { manifest, registeredAt: new Date().toISOString() });
   }
 
   unregister(id: string): void {
-    this.apps.delete(id);
+    this.entries.delete(id);
   }
 
-  get(id: string): AppManifest | undefined {
-    return this.apps.get(id);
+  get(id: string): RegistryEntry | undefined {
+    return this.entries.get(id);
   }
 
-  list(): AppManifest[] {
-    return Array.from(this.apps.values());
+  list(): RegistryEntry[] {
+    return Array.from(this.entries.values());
   }
 
   updateStatus(id: string, status: AppHealthStatus): void {
-    const manifest = this.apps.get(id);
-    if (manifest) {
-      this.apps.set(id, { ...manifest, status });
+    const entry = this.entries.get(id);
+    if (entry) {
+      this.entries.set(id, { ...entry, manifest: { ...entry.manifest, status } });
     }
   }
 }

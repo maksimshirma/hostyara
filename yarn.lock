@@ -903,9 +903,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hostyara/contract@workspace:^, @hostyara/contract@workspace:packages/contract":
+"@hostyara/contracts@workspace:^, @hostyara/contracts@workspace:packages/contracts":
   version: 0.0.0-use.local
-  resolution: "@hostyara/contract@workspace:packages/contract"
+  resolution: "@hostyara/contracts@workspace:packages/contracts"
   languageName: unknown
   linkType: soft
 
@@ -919,7 +919,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hostyara/host@workspace:apps/host"
   dependencies:
-    "@hostyara/contract": "workspace:^"
+    "@hostyara/contracts": "workspace:^"
     "@hostyara/event-bus": "workspace:^"
     "@hostyara/lifecycle": "workspace:^"
     "@hostyara/registry": "workspace:^"
@@ -934,7 +934,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hostyara/lifecycle@workspace:packages/lifecycle"
   dependencies:
-    "@hostyara/contract": "workspace:^"
+    "@hostyara/contracts": "workspace:^"
   languageName: unknown
   linkType: soft
 
@@ -942,7 +942,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hostyara/registry@workspace:packages/registry"
   dependencies:
-    "@hostyara/contract": "workspace:^"
+    "@hostyara/contracts": "workspace:^"
   languageName: unknown
   linkType: soft
 
@@ -950,7 +950,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hostyara/sdk@workspace:packages/sdk"
   dependencies:
-    "@hostyara/contract": "workspace:^"
+    "@hostyara/contracts": "workspace:^"
   languageName: unknown
   linkType: soft
 

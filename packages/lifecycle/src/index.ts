@@ -1,12 +1,8 @@
-import { MicrofrontendLifecycle } from "./types";
-
-export * from "./types";
+import { MfeModule } from "@hostyara/contracts";
 
 const noop = async () => {};
 
-export function createLifecycle(
-  overrides: Partial<MicrofrontendLifecycle>,
-): MicrofrontendLifecycle {
+export function createLifecycle(overrides: Partial<MfeModule>): MfeModule {
   return {
     bootstrap: noop,
     mount: noop,
