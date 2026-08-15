@@ -1,18 +1,50 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--ui-spacing-xl);
   text-align: center;
 }
 
 h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  color: #222;
+  font-size: var(--ui-font-size-2xl);
+  margin-bottom: var(--ui-spacing-md);
+  color: var(--ui-color-text);
 }
 
 p {
-  font-size: 1rem;
-  margin-bottom: 2rem;
-  color: #666;
+  font-size: var(--ui-font-size-md);
+  margin-bottom: var(--ui-spacing-xl);
+  color: var(--ui-color-text-secondary);
+}
+
+.themeSwitcher {
+  display: inline-flex;
+  gap: var(--ui-spacing-2xs);
+  margin-top: var(--ui-spacing-lg);
+  padding: var(--ui-spacing-3xs);
+  border-radius: var(--ui-border-radius-md);
+  background-color: var(--ui-color-bg-subtle);
+  border: 1px solid var(--ui-color-border);
+}
+
+.themeOption,
+.themeOptionActive {
+  padding: var(--ui-spacing-2xs) var(--ui-spacing-sm);
+  border: none;
+  border-radius: var(--ui-border-radius-sm);
+  font-size: var(--ui-font-size-sm);
+  background: transparent;
+  color: var(--ui-color-text-secondary);
+}
+
+.themeOptionActive {
+  background-color: var(--ui-color-surface);
+  color: var(--ui-color-text);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.themeStatus {
+  margin-top: var(--ui-spacing-sm);
+  font-size: var(--ui-font-size-xs);
+  color: var(--ui-color-text-secondary);
 }

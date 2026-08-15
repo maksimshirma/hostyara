@@ -1,4 +1,5 @@
 import type { Preview } from "@storybook/react";
+import "@hostyara/ui";
 
 const preview: Preview = {
   parameters: {

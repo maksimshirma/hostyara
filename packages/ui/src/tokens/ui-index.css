@@ -1,0 +1,18 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size-md);
+  line-height: var(--ui-line-height-normal);
+  color: var(--ui-color-text);
+  background-color: var(--ui-color-bg-subtle);
+}
