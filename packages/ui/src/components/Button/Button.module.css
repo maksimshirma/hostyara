@@ -1,32 +1,32 @@
 .button {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
+  padding: var(--ui-spacing-sm) var(--ui-spacing-lg);
+  font-size: var(--ui-font-size-md);
   border: none;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  border-radius: var(--ui-border-radius-sm);
+  font-weight: var(--ui-font-weight-medium);
+  transition: all var(--ui-transition-duration-normal) var(--ui-transition-easing-standard);
 }
 
 .primary {
-  background-color: #0066cc;
-  color: white;
+  background-color: var(--ui-color-primary);
+  color: var(--ui-color-on-primary);
 }
 
 .primary:hover {
-  background-color: #0052a3;
+  background-color: var(--ui-color-primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 102, 204, 0.2);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .secondary {
-  background-color: #e6e6e6;
-  color: #333;
+  background-color: var(--ui-color-gray-200);
+  color: var(--ui-color-text);
 }
 
 .secondary:hover {
-  background-color: #cccccc;
+  background-color: var(--ui-color-gray-300);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 .button:active {

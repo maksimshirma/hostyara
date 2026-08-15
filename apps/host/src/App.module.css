@@ -1,18 +1,18 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--ui-spacing-xl);
   text-align: center;
 }
 
 h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  color: #222;
+  font-size: var(--ui-font-size-2xl);
+  margin-bottom: var(--ui-spacing-md);
+  color: var(--ui-color-text);
 }
 
 p {
-  font-size: 1rem;
-  margin-bottom: 2rem;
-  color: #666;
+  font-size: var(--ui-font-size-md);
+  margin-bottom: var(--ui-spacing-xl);
+  color: var(--ui-color-text-secondary);
 }
