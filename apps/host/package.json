@@ -13,7 +13,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@hostyara/contract": "workspace:^",
+    "@hostyara/contracts": "workspace:^",
     "@hostyara/event-bus": "workspace:^",
     "@hostyara/lifecycle": "workspace:^",
     "@hostyara/registry": "workspace:^",

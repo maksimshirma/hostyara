@@ -6,6 +6,6 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@hostyara/contract": "workspace:^"
+    "@hostyara/contracts": "workspace:^"
   }
 }
