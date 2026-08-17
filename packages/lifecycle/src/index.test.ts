@@ -9,6 +9,7 @@ describe("@hostyara/lifecycle", () => {
     featureFlags: { isEnabled: () => false },
     permissions: { hasPermission: () => false },
     sharedState: { get: () => ({}), subscribe: () => () => {}, set: () => {} },
+    events: { emit: () => {}, on: () => () => {}, off: () => {} },
   };
 
   const context: MountContext = {
