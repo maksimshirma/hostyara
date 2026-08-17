@@ -32,6 +32,7 @@ describe("@hostyara/contracts", () => {
     featureFlags: { isEnabled: () => false },
     permissions: { hasPermission: () => true },
     sharedState,
+    events: { emit: () => {}, on: () => () => {}, off: () => {} },
   };
 
   it("composes a HostSDK from typed capability interfaces", () => {

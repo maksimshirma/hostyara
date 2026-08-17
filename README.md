@@ -92,7 +92,7 @@ git push --no-verify
 ```
 hostyara/
 ├── packages/
-│   ├── contract/             # @hostyara/contract — shared typed contracts/schemas
+│   ├── contracts/            # @hostyara/contracts — shared typed contracts/schemas
 │   ├── sdk/                  # @hostyara/sdk — public Host SDK (auth, navigation, notifications, feature flags, permissions)
 │   ├── ui/                   # @hostyara/ui — design system (tokens, theme, React components)
 │   ├── lifecycle/            # @hostyara/lifecycle — microfrontend lifecycle API
@@ -131,15 +131,15 @@ Each package under `packages/*` and `apps/host` has its own minimal `package.jso
 
 ## Packages
 
-| Package               | Purpose                                                                                                                     |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `@hostyara/contract`  | Shared typed contracts/schemas between host and microfrontends (`User`, `AppManifest`, `HostContext`, `MicrofrontendProps`) |
-| `@hostyara/sdk`       | Public typed Host SDK surface: `AuthSDK`, `NavigationSDK`, `NotificationsSDK`, `FeatureFlagsSDK`, `PermissionsSDK`          |
-| `@hostyara/ui`        | Shared design system: tokens, theme, React components (e.g. `Button`)                                                       |
-| `@hostyara/lifecycle` | Standardized microfrontend lifecycle API (`bootstrap`/`mount`/`unmount`/`update`/`prefetch`/`destroy`)                      |
-| `@hostyara/event-bus` | Typed host<->app pub/sub — skeleton only, implementation pending                                                            |
-| `@hostyara/registry`  | In-memory `AppRegistry` for app metadata, routes, versions, permissions, health status                                      |
-| `@hostyara/host`      | The shell app: auth, session, routing, layout, orchestration                                                                |
+| Package               | Purpose                                                                                                                                                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@hostyara/contracts` | Shared typed contracts/schemas between host and microfrontends (`User`, `AppManifest`, `HostContext`, `HostSDK`, `MountContext`, `MfeModule`, `RegistryEntry`, `RemoteDescriptor`, `EventBus`, `SharedStateAccessor`) |
+| `@hostyara/sdk`       | Public typed Host SDK surface: `AuthSDK`, `NavigationSDK`, `NotificationsSDK`, `FeatureFlagsSDK`, `PermissionsSDK`                                                                                                    |
+| `@hostyara/ui`        | Shared design system: tokens, theme, React components (e.g. `Button`)                                                                                                                                                 |
+| `@hostyara/lifecycle` | Standardized microfrontend lifecycle API (`bootstrap`/`mount`/`unmount`/`update`/`prefetch`/`destroy`)                                                                                                                |
+| `@hostyara/event-bus` | Typed host<->app pub/sub — skeleton only, implementation pending                                                                                                                                                      |
+| `@hostyara/registry`  | In-memory `AppRegistry` for app metadata, routes, versions, permissions, health status                                                                                                                                |
+| `@hostyara/host`      | The shell app: auth, session, routing, layout, orchestration                                                                                                                                                          |
 
 ## Environment
 

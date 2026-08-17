@@ -25,6 +25,11 @@ describe("@hostyara/sdk", () => {
         subscribe: () => () => {},
         set: () => {},
       },
+      events: {
+        emit: () => {},
+        on: () => () => {},
+        off: () => {},
+      },
     };
 
     expect(sdk.auth.isAuthenticated()).toBe(false);
