@@ -41,6 +41,7 @@
 - Name functions after what they actually do. Prefer specific names such as `validateData`, `transformData`, or `saveData` over vague names such as `processData`.
 - Keep source files focused on one logical responsibility. Aim for roughly 200–300 lines of code per file, excluding blank lines and comments.
 - When a file grows beyond a reasonable size, identify cohesive groups of functionality and move them into focused modules instead of continuing to expand the same file.
+- Unit test files matching `*.test.ts` must live in a `__jest__` subdirectory of the directory containing the source file under test, at `<source-directory>/__jest__/<file>.test.ts`. Never place a `*.test.ts` file directly next to its source file. Apply this whenever creating, moving, or generating unit tests.
 
 ### 4. Verification
 
