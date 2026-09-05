@@ -4,7 +4,7 @@ import { NotificationsSDK } from "./notifications";
 import { FeatureFlagsSDK } from "./feature-flags";
 import { PermissionsSDK } from "./permissions";
 import { SharedStateAccessor } from "./shared-state";
-import { EventBus } from "./event-bus";
+import { HostChannel } from "./host-channel";
 
 export interface HostSDK {
   auth: AuthSDK;
@@ -13,5 +13,5 @@ export interface HostSDK {
   featureFlags: FeatureFlagsSDK;
   permissions: PermissionsSDK;
   sharedState: SharedStateAccessor<Record<string, unknown>>;
-  events: EventBus;
+  events: HostChannel;
 }

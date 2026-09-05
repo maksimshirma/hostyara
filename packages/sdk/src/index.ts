@@ -5,4 +5,5 @@ export type {
   NotificationsSDK,
   FeatureFlagsSDK,
   PermissionsSDK,
+  HostChannel,
 } from "@hostyara/contracts";

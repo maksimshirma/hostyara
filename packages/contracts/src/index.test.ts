@@ -1,7 +1,6 @@
 import {
   AppManifest,
-  EventBus,
-  EventMap,
+  HostChannel,
   HostContext,
   HostSDK,
   IframeRemote,
@@ -32,7 +31,7 @@ describe("@hostyara/contracts", () => {
     featureFlags: { isEnabled: () => false },
     permissions: { hasPermission: () => true },
     sharedState,
-    events: { emit: () => {}, on: () => () => {}, off: () => {} },
+    events: { request: async () => undefined, on: () => () => {} } as HostChannel,
   };
 
   it("composes a HostSDK from typed capability interfaces", () => {
@@ -100,29 +99,22 @@ describe("@hostyara/contracts", () => {
     expect(context.container.textContent).toBe("mounted");
   });
 
-  it("supports typed emit/on/off on an EventBus", () => {
-    interface AppEvents extends EventMap {
-      "app:ready": { id: string };
-    }
-
-    const handlers: Array<(payload: AppEvents["app:ready"]) => void> = [];
-    const bus: EventBus<AppEvents> = {
-      emit: (_event, payload) =>
-        handlers.forEach((handler) => handler(payload as AppEvents["app:ready"])),
-      on: (_event, handler) => {
-        handlers.push(handler as (payload: AppEvents["app:ready"]) => void);
-        return () => {};
+  it("supports typed request/on on a HostChannel", async () => {
+    const handlers = new Map<string, (payload: unknown) => unknown>();
+    const channel: HostChannel = {
+      request: (method: string, payload?: unknown) => {
+        const handler = handlers.get(method);
+        if (!handler) return Promise.reject(new Error(`no handler for "${method}"`));
+        return Promise.resolve(handler(payload));
       },
-      off: (_event, handler) => {
-        const index = handlers.indexOf(handler as (payload: AppEvents["app:ready"]) => void);
-        if (index >= 0) handlers.splice(index, 1);
+      on: (method: string, handler: (payload: unknown) => unknown) => {
+        handlers.set(method, handler);
+        return () => handlers.delete(method);
       },
-    };
+    } as HostChannel;
 
-    const received: string[] = [];
-    bus.on("app:ready", (payload) => received.push(payload.id));
-    bus.emit("app:ready", { id: "app1" });
+    channel.on<{ id: string }, string>("app:ready", (payload) => payload.id);
 
-    expect(received).toEqual(["app1"]);
+    await expect(channel.request("app:ready", { id: "app1" })).resolves.toBe("app1");
   });
 });

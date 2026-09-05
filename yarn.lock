@@ -912,6 +912,8 @@ __metadata:
 "@hostyara/event-bus@workspace:^, @hostyara/event-bus@workspace:packages/event-bus":
   version: 0.0.0-use.local
   resolution: "@hostyara/event-bus@workspace:packages/event-bus"
+  dependencies:
+    "@hostyara/contracts": "workspace:^"
   languageName: unknown
   linkType: soft
 

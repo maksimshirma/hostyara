@@ -1,4 +1,4 @@
-import { HostSDK, MountContext } from "@hostyara/contracts";
+import { HostChannel, HostSDK, MountContext } from "@hostyara/contracts";
 import { createLifecycle } from "./index";
 
 describe("@hostyara/lifecycle", () => {
@@ -9,7 +9,7 @@ describe("@hostyara/lifecycle", () => {
     featureFlags: { isEnabled: () => false },
     permissions: { hasPermission: () => false },
     sharedState: { get: () => ({}), subscribe: () => () => {}, set: () => {} },
-    events: { emit: () => {}, on: () => () => {}, off: () => {} },
+    events: { request: async () => undefined, on: () => () => {} } as HostChannel,
   };
 
   const context: MountContext = {

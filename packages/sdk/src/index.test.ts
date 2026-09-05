@@ -1,4 +1,4 @@
-import { HostSDK } from "./index";
+import { HostChannel, HostSDK } from "./index";
 
 describe("@hostyara/sdk", () => {
   it("re-exports HostSDK from @hostyara/contracts", () => {
@@ -26,10 +26,9 @@ describe("@hostyara/sdk", () => {
         set: () => {},
       },
       events: {
-        emit: () => {},
+        request: async () => undefined,
         on: () => () => {},
-        off: () => {},
-      },
+      } as HostChannel,
     };
 
     expect(sdk.auth.isAuthenticated()).toBe(false);
