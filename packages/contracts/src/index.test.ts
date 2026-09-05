@@ -1,10 +1,8 @@
 import {
   AppManifest,
+  AppModule,
   HostChannel,
-  HostContext,
   HostSDK,
-  MfeModule,
-  MountContext,
   Publication,
   RegistryEntry,
   SharedStateAccessor,
@@ -125,27 +123,23 @@ describe("@hostyara/contracts", () => {
     expect(entry.manifest.id).toBe("recipes");
   });
 
-  it("builds a MountContext consumed by an MfeModule lifecycle", async () => {
-    const hostContext: HostContext = { userId: user.id, permissions: ["read"] };
-    const context: MountContext = {
-      container: document.createElement("div"),
-      hostContext,
-      sdk,
-    };
+  it("mounts and unmounts an AppModule with the host element and sdk", async () => {
+    const el = document.createElement("div");
 
-    const mfeModule: MfeModule = {
-      bootstrap: async () => {},
-      mount: async (ctx) => {
-        ctx.container.textContent = "mounted";
+    const appModule: AppModule = {
+      mount: async (container, hostSdk) => {
+        container.textContent = hostSdk.mode;
       },
-      unmount: async () => {},
-      update: async () => {},
-      prefetch: async () => {},
-      destroy: async () => {},
+      unmount: async (container) => {
+        container.textContent = "";
+      },
     };
 
-    await mfeModule.mount(context);
-    expect(context.container.textContent).toBe("mounted");
+    await appModule.mount(el, sdk);
+    expect(el.textContent).toBe("household");
+
+    await appModule.unmount(el);
+    expect(el.textContent).toBe("");
   });
 
   it("supports typed request/on on a HostChannel", async () => {

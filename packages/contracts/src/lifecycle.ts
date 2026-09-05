@@ -1,10 +1,6 @@
-import { MountContext } from "./mount";
+import { HostSDK } from "./host-sdk";
 
-export interface MfeModule {
-  bootstrap(context: MountContext): Promise<void>;
-  mount(context: MountContext): Promise<void>;
-  unmount(context: MountContext): Promise<void>;
-  update(context: MountContext): Promise<void>;
-  prefetch(context: MountContext): Promise<void>;
-  destroy(context: MountContext): Promise<void>;
+export interface AppModule {
+  mount(el: HTMLElement, sdk: HostSDK): void | Promise<void>;
+  unmount(el: HTMLElement): void | Promise<void>;
 }
