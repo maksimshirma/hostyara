@@ -16,6 +16,42 @@ interface SlotState {
   appModule: AppModule;
 }
 
+const STYLE_SELECTOR = "style,link[rel='stylesheet']";
+
+/**
+ * Some remote bundlers' own runtime inserts CSS into document.head even
+ * when the extraction config asks it not to (see T6). Rather than trust
+ * every remote's build to behave, the mount manager watches document.head
+ * for the duration of mount() and relocates anything a remote sneaks in
+ * there into its own shadow root, where it belongs.
+ */
+async function withHeadStylesRelocatedTo(
+  root: ShadowRoot,
+  run: () => void | Promise<void>,
+): Promise<void> {
+  const strayNodes: Element[] = [];
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof Element && node.matches(STYLE_SELECTOR)) {
+          strayNodes.push(node);
+        }
+      }
+    }
+  });
+
+  observer.observe(document.head, { childList: true });
+  try {
+    await run();
+  } finally {
+    observer.disconnect();
+    for (const node of strayNodes) {
+      node.remove();
+      root.append(node);
+    }
+  }
+}
+
 export function createMountManager(tokensHref: string): MountManager {
   const styleTextCache = new Map<string, Promise<string>>();
   const mountedSlots = new WeakMap<HTMLElement, SlotState>();
@@ -50,7 +86,7 @@ export function createMountManager(tokensHref: string): MountManager {
       root.append(el);
       slot.append(host);
 
-      await appModule.mount(el, sdk);
+      await withHeadStylesRelocatedTo(root, () => appModule.mount(el, sdk));
 
       mountedSlots.set(slot, { host, el, appModule });
     },

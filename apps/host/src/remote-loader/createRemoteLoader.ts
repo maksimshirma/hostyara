@@ -6,6 +6,39 @@ export interface RemoteLoader {
 }
 
 const DEFAULT_TIMEOUT_MS = 10000;
+const STYLE_SELECTOR = "style,link[rel='stylesheet']";
+
+/**
+ * Evaluating a remote's exposed module can run CSS side effects (some
+ * bundlers' own runtime inserts a <link> into document.head regardless of
+ * extraction config — see T6). That evaluation happens here, inside
+ * loadRemote(), before any shadow root exists to receive it, so there's
+ * nowhere sensible to relocate it — mount-manager already applies the
+ * manifest's real stylesheet into each shadow root independently, so any
+ * stray head insertion is pure duplication and safe to discard.
+ */
+async function withoutHeadSideEffects<T>(run: () => Promise<T>): Promise<T> {
+  const strayNodes: Element[] = [];
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof Element && node.matches(STYLE_SELECTOR)) {
+          strayNodes.push(node);
+        }
+      }
+    }
+  });
+
+  observer.observe(document.head, { childList: true });
+  try {
+    return await run();
+  } finally {
+    observer.disconnect();
+    for (const node of strayNodes) {
+      node.remove();
+    }
+  }
+}
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -66,7 +99,7 @@ export function createRemoteLoader(): RemoteLoader {
 
     const exposedPath = manifest.mount.exposed.replace(/^\.\//, "");
     const remoteModule = await withTimeout(
-      loadRemote(`${manifest.id}/${exposedPath}`),
+      withoutHeadSideEffects(() => loadRemote(`${manifest.id}/${exposedPath}`)),
       timeoutMs,
       `Timed out loading remote "${manifest.id}" after ${timeoutMs}ms`,
     );

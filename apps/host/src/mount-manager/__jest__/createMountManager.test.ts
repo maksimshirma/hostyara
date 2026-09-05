@@ -92,6 +92,27 @@ describe("createMountManager", () => {
     expect(document.head.children.length).toBe(headChildrenBefore);
   });
 
+  it("relocates a stylesheet a remote's own runtime injects into document.head during mount", async () => {
+    const manager = createMountManager("/tokens.css");
+    const slot = document.createElement("div");
+    const appModule = createAppModule();
+    const headChildrenBefore = document.head.children.length;
+
+    appModule.mount.mockImplementation(() => {
+      const stray = document.createElement("link");
+      stray.rel = "stylesheet";
+      stray.href = "https://cdn.example.com/recipes/stray.css";
+      document.head.append(stray);
+    });
+
+    await manager.mount(slot, manifest, appModule, sdk);
+
+    expect(document.head.children.length).toBe(headChildrenBefore);
+    const host = slot.firstElementChild as HTMLElement;
+    const relocated = host.shadowRoot?.querySelector('link[rel="stylesheet"]');
+    expect(relocated?.getAttribute("href")).toBe("https://cdn.example.com/recipes/stray.css");
+  });
+
   it("caches stylesheet text by URL across mounts", async () => {
     const manager = createMountManager("/tokens.css");
 

@@ -1,0 +1,23 @@
+:host {
+  display: block;
+  font-family: var(--ui-font-family);
+  color: var(--ui-color-text);
+}
+
+.card {
+  padding: var(--ui-spacing-md);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-border-radius-md);
+  background: var(--ui-color-surface);
+}
+
+.title {
+  margin: 0 0 var(--ui-spacing-xs);
+  color: var(--ui-color-primary);
+  font-size: var(--ui-font-size-lg);
+}
+
+.text {
+  margin: 0;
+  color: var(--ui-color-text-secondary);
+}

@@ -132,4 +132,20 @@ describe("createRemoteLoader", () => {
       'Remote "recipes" does not export a valid AppModule',
     );
   });
+
+  it("discards a stylesheet the remote's module evaluation injects into document.head", async () => {
+    const headChildrenBefore = document.head.children.length;
+    loadRemoteMock.mockImplementation(() => {
+      const stray = document.createElement("link");
+      stray.rel = "stylesheet";
+      stray.href = "https://cdn.example.com/recipes/app.css";
+      document.head.append(stray);
+      return Promise.resolve(fakeAppModule);
+    });
+    const loader = createRemoteLoader();
+
+    await loader.loadRemoteModule(manifest);
+
+    expect(document.head.children.length).toBe(headChildrenBefore);
+  });
 });
