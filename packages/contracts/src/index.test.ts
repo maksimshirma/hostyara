@@ -3,9 +3,7 @@ import {
   HostChannel,
   HostContext,
   HostSDK,
-  IframeRemote,
   MfeModule,
-  ModuleFederationRemote,
   MountContext,
   Publication,
   RegistryEntry,
@@ -91,36 +89,40 @@ describe("@hostyara/contracts", () => {
     expect(sharedState.get()).toEqual({ theme: "dark" });
   });
 
-  it("supports both module-federation and iframe remotes in an AppManifest", () => {
-    const mfRemote: ModuleFederationRemote = {
-      kind: "module-federation",
-      remoteEntryUrl: "https://example.com/remoteEntry.js",
-      scope: "example",
-      module: "./App",
-    };
-    const iframeRemote: IframeRemote = {
-      kind: "iframe",
-      entryUrl: "https://example.com/",
-      sandbox: ["allow-scripts"],
-    };
-
+  it("describes an AppManifest by the IA/tech taxonomy", () => {
     const manifest: AppManifest = {
-      id: "app1",
-      name: "Example App",
-      namespace: "example",
-      routes: ["/example"],
-      version: "1.0.0",
-      remote: mfRemote,
-      permissions: ["read"],
-      featureFlags: ["new-ui"],
-      status: "healthy",
+      id: "recipes",
+      name: "Рецепты",
+      version: "2.1.0",
+      contract: "1",
+      category: "Кухня",
+      tags: ["еда", "планирование", "покупки"],
+      surfaces: {
+        homeWidgets: ["today-plan", "shopping-preview"],
+        quickActions: ["add-recipe"],
+        search: true,
+        notifications: true,
+      },
+      permissions: ["household.members.read", "storage.own"],
+      entities: [
+        { type: "recipe", route: "/r/:id/:slug" },
+        { type: "collection", route: "/collections/:id" },
+      ],
+      share: { entities: ["recipe", "collection"], route: "/public/:type/:id" },
+      routes: ["/", "/r/:id/*", "/collections/*"],
+      mount: {
+        remoteEntry: "https://cdn.hostyara.app/recipes/remoteEntry.a3f91c.js",
+        exposed: "./app",
+        styles: ["https://cdn.hostyara.app/recipes/app.7d2e10.css"],
+      },
+      network: { connect: ["https://api-recipes.hostyara.app"] },
     };
 
-    expect(manifest.remote.kind).toBe("module-federation");
-    expect(iframeRemote.kind).toBe("iframe");
+    expect(manifest.mount.remoteEntry).toContain("remoteEntry");
+    expect(manifest.share?.entities).toContain("recipe");
 
     const entry: RegistryEntry = { manifest, registeredAt: new Date().toISOString() };
-    expect(entry.manifest.id).toBe("app1");
+    expect(entry.manifest.id).toBe("recipes");
   });
 
   it("builds a MountContext consumed by an MfeModule lifecycle", async () => {

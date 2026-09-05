@@ -1,17 +1,22 @@
+import { AppMount } from "./app-mount";
+import { AppNetwork } from "./network";
+import { AppSurfaces } from "./surfaces";
+import { EntityRoute } from "./entity-route";
 import { Permission } from "./permissions";
-import { FeatureFlag } from "./feature-flags";
-import { RemoteDescriptor } from "./remote";
-
-export type AppHealthStatus = "healthy" | "degraded" | "down";
+import { ShareDescriptor } from "./share-descriptor";
 
 export interface AppManifest {
   id: string;
   name: string;
-  namespace: string;
-  routes: string[];
   version: string;
-  remote: RemoteDescriptor;
+  contract: string;
+  category: string;
+  tags: string[];
+  surfaces: AppSurfaces;
   permissions: Permission[];
-  featureFlags: FeatureFlag[];
-  status: AppHealthStatus;
+  entities: EntityRoute[];
+  share?: ShareDescriptor;
+  routes: string[];
+  mount: AppMount;
+  network: AppNetwork;
 }

@@ -5,18 +5,20 @@ describe("AppRegistry", () => {
   const manifest: AppManifest = {
     id: "app1",
     name: "Example App",
-    namespace: "example",
-    routes: ["/example"],
     version: "1.0.0",
-    remote: {
-      kind: "module-federation",
-      remoteEntryUrl: "https://example.com/remoteEntry.js",
-      scope: "example",
-      module: "./App",
-    },
+    contract: "1",
+    category: "Кухня",
+    tags: ["еда"],
+    surfaces: { search: true },
     permissions: [],
-    featureFlags: [],
-    status: "healthy",
+    entities: [{ type: "recipe", route: "/r/:id/:slug" }],
+    routes: ["/example"],
+    mount: {
+      remoteEntry: "https://example.com/remoteEntry.js",
+      exposed: "./app",
+      styles: ["https://example.com/app.css"],
+    },
+    network: { connect: ["https://api.example.com"] },
   };
 
   it("registers and retrieves an app manifest", () => {
@@ -25,14 +27,6 @@ describe("AppRegistry", () => {
 
     expect(registry.get("app1")?.manifest).toEqual(manifest);
     expect(registry.list().map((entry) => entry.manifest)).toEqual([manifest]);
-  });
-
-  it("updates app status", () => {
-    const registry = new AppRegistry();
-    registry.register(manifest);
-    registry.updateStatus("app1", "down");
-
-    expect(registry.get("app1")?.manifest.status).toBe("down");
   });
 
   it("unregisters an app", () => {
