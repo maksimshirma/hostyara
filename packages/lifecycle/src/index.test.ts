@@ -1,15 +1,29 @@
-import { HostChannel, HostSDK, MountContext } from "@hostyara/contracts";
+import { HostSDK, MountContext } from "@hostyara/contracts";
 import { createLifecycle } from "./index";
 
 describe("@hostyara/lifecycle", () => {
   const sdk: HostSDK = {
-    auth: { getUser: () => null, isAuthenticated: () => false },
-    navigation: { navigate: () => {}, getCurrentRoute: () => "/" },
-    notifications: { show: () => {} },
-    featureFlags: { isEnabled: () => false },
-    permissions: { hasPermission: () => false },
-    sharedState: { get: () => ({}), subscribe: () => () => {}, set: () => {} },
-    events: { request: async () => undefined, on: () => () => {} } as HostChannel,
+    mode: "household",
+    basename: "/h/f3k2xp/a/recipes",
+    context: {
+      mode: "household",
+      hid: "f3k2xp",
+      user: { id: "u1", name: "Ada", email: "ada@example.com" },
+      permissions: [],
+    },
+    router: {
+      location: { pathname: "/", search: "", hash: "" },
+      navigate: () => {},
+      subscribe: () => () => {},
+      link: (to) => to,
+    },
+    nav: { setBreadcrumbs: () => {}, setTitle: () => {} },
+    apps: { open: () => {}, canOpen: () => false },
+    share: {
+      create: async () => ({ url: "https://hostyara.app/s/token", expiresAt: "2026-10-05" }),
+      list: async () => [],
+      revoke: async () => {},
+    },
   };
 
   const context: MountContext = {

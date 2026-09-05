@@ -1,17 +1,15 @@
-import { AuthSDK } from "./auth";
-import { NavigationSDK } from "./navigation";
-import { NotificationsSDK } from "./notifications";
-import { FeatureFlagsSDK } from "./feature-flags";
-import { PermissionsSDK } from "./permissions";
-import { SharedStateAccessor } from "./shared-state";
-import { HostChannel } from "./host-channel";
+import { SdkApps } from "./sdk-apps";
+import { SdkContext } from "./sdk-context";
+import { SdkNav } from "./sdk-nav";
+import { SdkRouter } from "./sdk-router";
+import { SdkShare } from "./sdk-share";
 
 export interface HostSDK {
-  auth: AuthSDK;
-  navigation: NavigationSDK;
-  notifications: NotificationsSDK;
-  featureFlags: FeatureFlagsSDK;
-  permissions: PermissionsSDK;
-  sharedState: SharedStateAccessor<Record<string, unknown>>;
-  events: HostChannel;
+  readonly mode: "household" | "public";
+  readonly basename: string;
+  readonly context: SdkContext;
+  router: SdkRouter;
+  nav: SdkNav;
+  apps: SdkApps;
+  share: SdkShare;
 }
