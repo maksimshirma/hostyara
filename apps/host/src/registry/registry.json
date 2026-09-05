@@ -1,0 +1,20 @@
+[
+  {
+    "id": "recipes",
+    "name": "Рецепты",
+    "version": "0.1.0",
+    "contract": "1",
+    "category": "Кухня",
+    "tags": ["еда", "планирование"],
+    "surfaces": { "search": true },
+    "permissions": [],
+    "entities": [{ "type": "recipe", "route": "/r/:id/:slug" }],
+    "routes": ["/", "/r/:id/*"],
+    "mount": {
+      "remoteEntry": "http://localhost:5174/remoteEntry.js",
+      "exposed": "./app",
+      "styles": []
+    },
+    "network": { "connect": [] }
+  }
+]

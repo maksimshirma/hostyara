@@ -1,0 +1,27 @@
+import { loadRegistry } from "../loadRegistry";
+
+describe("loadRegistry", () => {
+  it("registers every manifest from registry.json", () => {
+    const registry = loadRegistry();
+
+    expect(registry.get("recipes")?.manifest.id).toBe("recipes");
+  });
+
+  it("resolves a known app with a compatible contract", () => {
+    const registry = loadRegistry();
+
+    expect(registry.resolve("recipes")).toEqual({
+      ok: true,
+      manifest: expect.objectContaining({ id: "recipes" }),
+    });
+  });
+
+  it("returns a typed error for an app not present in registry.json", () => {
+    const registry = loadRegistry();
+
+    expect(registry.resolve("budget")).toEqual({
+      ok: false,
+      error: { kind: "unknown-app", appId: "budget" },
+    });
+  });
+});

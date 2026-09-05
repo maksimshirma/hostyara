@@ -1,5 +1,5 @@
 import { AppManifest } from "@hostyara/contracts";
-import { AppRegistry } from "./index";
+import { AppRegistry } from "../index";
 
 describe("AppRegistry", () => {
   const manifest: AppManifest = {
@@ -36,5 +36,38 @@ describe("AppRegistry", () => {
 
     expect(registry.get("app1")).toBeUndefined();
     expect(registry.list()).toEqual([]);
+  });
+
+  describe("resolve", () => {
+    it("resolves a registered app with a compatible contract major", () => {
+      const registry = new AppRegistry();
+      registry.register(manifest);
+
+      expect(registry.resolve("app1")).toEqual({ ok: true, manifest });
+    });
+
+    it("returns a typed error for an unknown appId instead of throwing", () => {
+      const registry = new AppRegistry();
+
+      expect(registry.resolve("missing")).toEqual({
+        ok: false,
+        error: { kind: "unknown-app", appId: "missing" },
+      });
+    });
+
+    it("returns a typed error for an incompatible contract major instead of throwing", () => {
+      const registry = new AppRegistry();
+      registry.register({ ...manifest, contract: "2.0" });
+
+      expect(registry.resolve("app1")).toEqual({
+        ok: false,
+        error: {
+          kind: "incompatible-contract",
+          appId: "app1",
+          expectedMajor: "1",
+          actualMajor: "2",
+        },
+      });
+    });
   });
 });
