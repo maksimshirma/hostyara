@@ -1,0 +1,5 @@
+.stub {
+  padding: var(--ui-spacing-xs) var(--ui-spacing-sm);
+  color: var(--ui-color-text-secondary);
+  font-size: var(--ui-font-size-sm);
+}

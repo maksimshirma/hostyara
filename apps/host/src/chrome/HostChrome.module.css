@@ -1,0 +1,15 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status {
+  padding: 0 var(--ui-spacing-sm);
+  color: var(--ui-color-text-secondary);
+  font-size: var(--ui-font-size-sm);
+}
+
+.slot {
+  padding: var(--ui-spacing-sm);
+}

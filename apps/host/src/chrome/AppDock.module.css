@@ -1,0 +1,19 @@
+.dock {
+  display: flex;
+  gap: var(--ui-spacing-xs);
+  padding: var(--ui-spacing-sm);
+  border-bottom: 1px solid var(--ui-color-border);
+}
+
+.item,
+.itemActive {
+  padding: var(--ui-spacing-xs) var(--ui-spacing-sm);
+  border-radius: var(--ui-border-radius-sm);
+  text-decoration: none;
+  color: var(--ui-color-text);
+}
+
+.itemActive {
+  background: var(--ui-color-primary);
+  color: var(--ui-color-on-primary);
+}
