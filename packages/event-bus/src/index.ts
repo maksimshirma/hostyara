@@ -22,3 +22,5 @@ export function createHostChannel(): HostChannel {
 
   return { request, on } as HostChannel;
 }
+
+export { createMessagePortChannel } from "./createMessagePortChannel";

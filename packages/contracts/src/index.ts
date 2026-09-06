@@ -23,3 +23,4 @@ export * from "./network";
 export * from "./surfaces";
 export * from "./entity-route";
 export * from "./share-descriptor";
+export * from "./iframe-handshake";

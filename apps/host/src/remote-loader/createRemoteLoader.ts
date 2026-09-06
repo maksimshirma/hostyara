@@ -1,5 +1,6 @@
 import { AppManifest, AppModule } from "@hostyara/contracts";
 import { init, loadRemote, registerRemotes } from "@module-federation/runtime";
+import { createIframeAppModule } from "../iframe-transport";
 import { RemoteLoadError } from "./RemoteLoadError";
 
 export interface RemoteLoader {
@@ -149,6 +150,13 @@ export function createRemoteLoader(): RemoteLoader {
 
   return {
     loadRemoteModule(manifest, timeoutMs = DEFAULT_TIMEOUT_MS) {
+      // The iframe transport does its actual connecting inside mount()
+      // (that's where the handshake needs a live sdk to bridge against),
+      // not here — there's no remote script to fetch or cache by URL.
+      if (manifest.mount.type === "iframe") {
+        return Promise.resolve(createIframeAppModule(manifest));
+      }
+
       const cached = loadingModules.get(manifest.id);
       if (cached) return cached;
 

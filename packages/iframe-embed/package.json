@@ -1,0 +1,12 @@
+{
+  "name": "@hostyara/iframe-embed",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@hostyara/contracts": "workspace:^",
+    "@hostyara/event-bus": "workspace:^"
+  }
+}

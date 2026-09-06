@@ -993,6 +993,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@hostyara/iframe-embed@workspace:packages/iframe-embed":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/iframe-embed@workspace:packages/iframe-embed"
+  dependencies:
+    "@hostyara/contracts": "workspace:^"
+    "@hostyara/event-bus": "workspace:^"
+  languageName: unknown
+  linkType: soft
+
 "@hostyara/lifecycle@workspace:^, @hostyara/lifecycle@workspace:packages/lifecycle":
   version: 0.0.0-use.local
   resolution: "@hostyara/lifecycle@workspace:packages/lifecycle"

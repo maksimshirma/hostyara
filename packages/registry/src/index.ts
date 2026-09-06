@@ -2,7 +2,7 @@ import { AppManifest, RegistryEntry } from "@hostyara/contracts";
 import { getContractMajor, SUPPORTED_CONTRACT_MAJOR } from "./contract-version";
 import { ResolveResult } from "./resolve-result";
 
-export { SUPPORTED_CONTRACT_MAJOR } from "./contract-version";
+export { getContractMajor, SUPPORTED_CONTRACT_MAJOR } from "./contract-version";
 export type { ResolveError } from "./resolve-error";
 export type { ResolveResult } from "./resolve-result";
 
