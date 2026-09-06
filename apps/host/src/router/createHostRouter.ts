@@ -1,4 +1,5 @@
 import { canonicalizeHidSegment } from "./hid";
+import { withGuardSuppressed } from "./historyGuard";
 import { HouseholdLookup } from "./loadHouseholds";
 import { parseRoute, Route } from "./route";
 
@@ -36,10 +37,12 @@ function redirectToCanonicalIfNeeded(households: HouseholdLookup): void {
     `/h/${route.hidSegment}`,
     `/h/${canonicalHidSegment}`,
   );
-  window.history.replaceState(
-    null,
-    "",
-    `${canonicalPathname}${window.location.search}${window.location.hash}`,
+  withGuardSuppressed(() =>
+    window.history.replaceState(
+      null,
+      "",
+      `${canonicalPathname}${window.location.search}${window.location.hash}`,
+    ),
   );
 }
 
@@ -67,11 +70,13 @@ export function createHostRouter(households: HouseholdLookup): HostRouter {
       return parseRoute(window.location.pathname);
     },
     navigate(to, opts = {}) {
-      if (opts.replace) {
-        window.history.replaceState(null, "", to);
-      } else {
-        window.history.pushState(null, "", to);
-      }
+      withGuardSuppressed(() => {
+        if (opts.replace) {
+          window.history.replaceState(null, "", to);
+        } else {
+          window.history.pushState(null, "", to);
+        }
+      });
       redirectToCanonicalIfNeeded(households);
       notify();
     },

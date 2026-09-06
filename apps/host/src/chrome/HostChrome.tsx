@@ -9,6 +9,7 @@ import {
   createHostRouter,
   createSdkRouter,
   HostRouter,
+  installDevHistoryGuard,
   loadHouseholds,
   Route,
 } from "../router";
@@ -79,8 +80,12 @@ export function HostChrome() {
   const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
   const apps = registry.list().map((entry) => entry.manifest);
   const hidSegment = route.kind === "space" ? route.hidSegment : DEFAULT_HID;
+  const activeAppIdRef = useRef(activeAppId);
+  activeAppIdRef.current = activeAppId;
 
   useEffect(() => installGlobalErrorHandlers(() => attemptedAppIdRef.current), []);
+
+  useEffect(() => installDevHistoryGuard(() => activeAppIdRef.current), []);
 
   useEffect(() => {
     if (router.getRoute().kind === "not-found" && window.location.pathname === "/") {
