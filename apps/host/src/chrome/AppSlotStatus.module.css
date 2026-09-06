@@ -1,0 +1,4 @@
+.message {
+  padding: var(--ui-spacing-sm);
+  color: var(--ui-color-text-secondary);
+}

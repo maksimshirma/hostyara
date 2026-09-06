@@ -11,6 +11,7 @@ jest.mock("@module-federation/runtime", () => ({
 }));
 
 import { createRemoteLoader } from "../createRemoteLoader";
+import { RemoteLoadError } from "../RemoteLoadError";
 
 const manifest: AppManifest = {
   id: "recipes",
@@ -58,9 +59,10 @@ describe("createRemoteLoader", () => {
 
     const appModule = await loader.loadRemoteModule(manifest);
 
-    expect(registerRemotesMock).toHaveBeenCalledWith([
-      { name: "recipes", entry: manifest.mount.remoteEntry },
-    ]);
+    expect(registerRemotesMock).toHaveBeenCalledWith(
+      [{ name: "recipes", entry: manifest.mount.remoteEntry }],
+      { force: true },
+    );
     expect(loadRemoteMock).toHaveBeenCalledWith("recipes/app");
     expect(appModule).toBe(fakeAppModule);
   });
@@ -103,7 +105,7 @@ describe("createRemoteLoader", () => {
     expect(loadRemoteMock).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects with a timeout error when the remote never resolves", async () => {
+  it("rejects with a typed timeout error when the remote never resolves", async () => {
     jest.useFakeTimers();
     loadRemoteMock.mockReturnValue(new Promise(() => {}));
     const loader = createRemoteLoader();
@@ -111,7 +113,10 @@ describe("createRemoteLoader", () => {
     const promise = loader.loadRemoteModule(manifest, 1000);
     promise.catch(() => {});
     await jest.advanceTimersByTimeAsync(1000);
-    await expect(promise).rejects.toThrow('Timed out loading remote "recipes"');
+    await expect(promise).rejects.toMatchObject({
+      kind: "timeout",
+      appId: "recipes",
+    } satisfies Partial<RemoteLoadError>);
   });
 
   it("allows retrying after a failed load", async () => {
@@ -119,18 +124,44 @@ describe("createRemoteLoader", () => {
     loadRemoteMock.mockResolvedValueOnce(fakeAppModule);
     const loader = createRemoteLoader();
 
-    await expect(loader.loadRemoteModule(manifest)).rejects.toThrow("network error");
+    await expect(loader.loadRemoteModule(manifest)).rejects.toMatchObject({
+      kind: "load-failed",
+      appId: "recipes",
+      message: "network error",
+    } satisfies Partial<RemoteLoadError>);
     await expect(loader.loadRemoteModule(manifest)).resolves.toBe(fakeAppModule);
     expect(loadRemoteMock).toHaveBeenCalledTimes(2);
   });
 
-  it("throws when the remote does not export mount/unmount", async () => {
+  it("re-registers the remote with a cache-busted URL on retry, since the runtime never re-fetches a URL it already failed to load", async () => {
+    loadRemoteMock.mockRejectedValueOnce(new Error("network error"));
+    loadRemoteMock.mockResolvedValueOnce(fakeAppModule);
+    const loader = createRemoteLoader();
+
+    await loader.loadRemoteModule(manifest).catch(() => {});
+    await loader.loadRemoteModule(manifest);
+
+    expect(registerRemotesMock).toHaveBeenNthCalledWith(
+      1,
+      [{ name: "recipes", entry: manifest.mount.remoteEntry }],
+      { force: true },
+    );
+    expect(registerRemotesMock).toHaveBeenNthCalledWith(
+      2,
+      [{ name: "recipes", entry: `${manifest.mount.remoteEntry}?retry=1` }],
+      { force: true },
+    );
+  });
+
+  it("rejects with a typed load-failed error when the remote does not export mount/unmount", async () => {
     loadRemoteMock.mockResolvedValue({ notAnAppModule: true });
     const loader = createRemoteLoader();
 
-    await expect(loader.loadRemoteModule(manifest)).rejects.toThrow(
-      'Remote "recipes" does not export a valid AppModule',
-    );
+    await expect(loader.loadRemoteModule(manifest)).rejects.toMatchObject({
+      kind: "load-failed",
+      appId: "recipes",
+      message: 'Remote "recipes" does not export a valid AppModule',
+    } satisfies Partial<RemoteLoadError>);
   });
 
   it("discards a stylesheet the remote's module evaluation injects into document.head", async () => {

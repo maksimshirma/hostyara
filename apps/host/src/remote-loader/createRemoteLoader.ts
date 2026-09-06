@@ -1,5 +1,6 @@
 import { AppManifest, AppModule } from "@hostyara/contracts";
 import { init, loadRemote, registerRemotes } from "@module-federation/runtime";
+import { RemoteLoadError } from "./RemoteLoadError";
 
 export interface RemoteLoader {
   loadRemoteModule(manifest: AppManifest, timeoutMs?: number): Promise<AppModule>;
@@ -40,9 +41,17 @@ async function withoutHeadSideEffects<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, appId: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+    const timer = setTimeout(() => {
+      reject(
+        new RemoteLoadError(
+          "timeout",
+          appId,
+          `Timed out loading remote "${appId}" after ${timeoutMs}ms`,
+        ),
+      );
+    }, timeoutMs);
     promise.then(
       (value) => {
         clearTimeout(timer);
@@ -70,9 +79,26 @@ function toAppModule(remoteModule: unknown, appId: string): AppModule {
   return maybeAppModule as AppModule;
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * @module-federation/runtime caches a failed script load by URL forever —
+ * once a remoteEntry fails to fetch, calling loadRemote() again for the
+ * same URL never re-issues the request, so a "retry" would silently do
+ * nothing. Appending a distinguishing query param per failed attempt makes
+ * each retry a URL the library hasn't seen (and cached as broken) before.
+ */
+function withRetryParam(url: string, attempt: number): string {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}retry=${attempt}`;
+}
+
 export function createRemoteLoader(): RemoteLoader {
   let federationInitialized = false;
-  const registeredRemotes = new Set<string>();
+  const registeredRemoteEntries = new Map<string, string>();
+  const failedAttempts = new Map<string, number>();
   const loadingModules = new Map<string, Promise<AppModule>>();
 
   function ensureFederationHost(): void {
@@ -88,9 +114,19 @@ export function createRemoteLoader(): RemoteLoader {
   }
 
   function ensureRemoteRegistered(manifest: AppManifest): void {
-    if (registeredRemotes.has(manifest.id)) return;
-    registerRemotes([{ name: manifest.id, entry: manifest.mount.remoteEntry }]);
-    registeredRemotes.add(manifest.id);
+    const attempt = failedAttempts.get(manifest.id) ?? 0;
+    const entry =
+      attempt === 0
+        ? manifest.mount.remoteEntry
+        : withRetryParam(manifest.mount.remoteEntry, attempt);
+
+    if (registeredRemoteEntries.get(manifest.id) === entry) return;
+    // force: true — without it, re-registering an already-known remote
+    // name is a silent no-op, so a retry's cache-busted URL would never
+    // actually replace the one @module-federation/runtime already failed
+    // to load.
+    registerRemotes([{ name: manifest.id, entry }], { force: true });
+    registeredRemoteEntries.set(manifest.id, entry);
   }
 
   async function loadOnce(manifest: AppManifest, timeoutMs: number): Promise<AppModule> {
@@ -98,13 +134,17 @@ export function createRemoteLoader(): RemoteLoader {
     ensureRemoteRegistered(manifest);
 
     const exposedPath = manifest.mount.exposed.replace(/^\.\//, "");
-    const remoteModule = await withTimeout(
-      withoutHeadSideEffects(() => loadRemote(`${manifest.id}/${exposedPath}`)),
-      timeoutMs,
-      `Timed out loading remote "${manifest.id}" after ${timeoutMs}ms`,
-    );
-
-    return toAppModule(remoteModule, manifest.id);
+    try {
+      const remoteModule = await withTimeout(
+        withoutHeadSideEffects(() => loadRemote(`${manifest.id}/${exposedPath}`)),
+        timeoutMs,
+        manifest.id,
+      );
+      return toAppModule(remoteModule, manifest.id);
+    } catch (error) {
+      if (error instanceof RemoteLoadError) throw error;
+      throw new RemoteLoadError("load-failed", manifest.id, errorMessage(error));
+    }
   }
 
   return {
@@ -114,6 +154,7 @@ export function createRemoteLoader(): RemoteLoader {
 
       const promise = loadOnce(manifest, timeoutMs).catch((error: unknown) => {
         loadingModules.delete(manifest.id);
+        failedAttempts.set(manifest.id, (failedAttempts.get(manifest.id) ?? 0) + 1);
         throw error;
       });
       loadingModules.set(manifest.id, promise);
