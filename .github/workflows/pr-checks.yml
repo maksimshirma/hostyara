@@ -57,6 +57,22 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn test
 
+  conformance:
+    name: Conformance (demo-recipes, demo-budget)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: >-
+          yarn jest
+          apps/demo-recipes/src/__jest__/conformance.test.ts
+          apps/demo-budget/src/__jest__/conformance.test.ts
+
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -83,6 +99,16 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn build
+      - run: yarn workspace @hostyara/demo-recipes build
+      - run: yarn workspace @hostyara/demo-budget build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+          path: |
+            apps/host/dist
+            apps/demo-recipes/dist
+            apps/demo-budget/dist
+          retention-days: 14
 
   storybook:
     name: Storybook Build
