@@ -6,3 +6,4 @@ export { loadHouseholds } from "./loadHouseholds";
 export type { Household, HouseholdLookup } from "./loadHouseholds";
 export { createHostRouter } from "./createHostRouter";
 export type { HostRouter, HostRouterLocation } from "./createHostRouter";
+export { createSdkRouter } from "./createSdkRouter";

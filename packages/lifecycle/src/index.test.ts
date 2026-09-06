@@ -14,6 +14,7 @@ describe("@hostyara/lifecycle", () => {
     router: {
       location: { pathname: "/", search: "", hash: "" },
       navigate: () => {},
+      back: () => {},
       subscribe: () => () => {},
       link: (to) => to,
     },

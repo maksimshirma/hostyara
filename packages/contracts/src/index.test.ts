@@ -19,6 +19,7 @@ describe("@hostyara/contracts", () => {
     router: {
       location: { pathname: "/", search: "", hash: "" },
       navigate: () => {},
+      back: () => {},
       subscribe: () => () => {},
       link: (to) => `/h/f3k2xp/a/recipes${to}`,
     },

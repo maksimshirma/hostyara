@@ -9,6 +9,7 @@ describe("@hostyara/sdk", () => {
       router: {
         location: { pathname: "/", search: "", hash: "" },
         navigate: () => {},
+        back: () => {},
         subscribe: () => () => {},
         link: (to) => to,
       },

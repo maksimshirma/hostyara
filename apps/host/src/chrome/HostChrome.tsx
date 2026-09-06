@@ -4,7 +4,14 @@ import tokensHref from "@hostyara/ui/src/tokens/tokens.css?url";
 import { loadRegistry } from "../registry/loadRegistry";
 import { createRemoteLoader, RemoteLoadError } from "../remote-loader";
 import { createMountManager } from "../mount-manager";
-import { buildAppPath, createHostRouter, loadHouseholds, Route } from "../router";
+import {
+  buildAppPath,
+  createHostRouter,
+  createSdkRouter,
+  HostRouter,
+  loadHouseholds,
+  Route,
+} from "../router";
 import { AppDock } from "./AppDock";
 import { AppSlotStatus } from "./AppSlotStatus";
 import { SpaceSwitcherStub } from "./SpaceSwitcherStub";
@@ -17,10 +24,10 @@ import styles from "./HostChrome.module.css";
 // here) picks a real one.
 const DEFAULT_HID = "demo";
 
-// Stand-in for the real HostSDK (mode/context/router come from T11's
-// sdk.router; nav/apps/share are further out) — just enough for a mounted
-// AppModule to receive a well-formed sdk argument today.
-function buildFakeSdk(hid: string, basename: string): HostSDK {
+// nav/apps/share are still stand-ins (no breadcrumbs, cross-app links, or
+// sharing built yet) — router is the real thing, wired to the host's own
+// router via createSdkRouter.
+function buildSdk(hid: string, basename: string, hostRouter: HostRouter): HostSDK {
   return {
     mode: "household",
     basename,
@@ -30,12 +37,7 @@ function buildFakeSdk(hid: string, basename: string): HostSDK {
       user: { id: "u1", name: "Demo", email: "demo@example.com" },
       permissions: [],
     },
-    router: {
-      location: { pathname: "/", search: "", hash: "" },
-      navigate: () => {},
-      subscribe: () => () => {},
-      link: (to) => to,
-    },
+    router: createSdkRouter(hostRouter, basename),
     nav: { setBreadcrumbs: () => {}, setTitle: () => {} },
     apps: { open: () => {}, canOpen: () => false },
     share: {
@@ -126,7 +128,7 @@ export function HostChrome() {
           slotRef.current,
           resolved.manifest,
           appModule,
-          buildFakeSdk(hid, basename),
+          buildSdk(hid, basename, router),
         );
         if (generation !== openGenerationRef.current) {
           await mountManager.unmount(slotRef.current);
