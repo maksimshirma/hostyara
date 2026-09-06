@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@hostyara/contracts": "workspace:^",
+    "@hostyara/iframe-embed": "workspace:^",
     "@hostyara/router-react": "workspace:^",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

@@ -46,7 +46,7 @@ function fakeSdk(): HostSDK {
       location: { pathname: "/", search: "", hash: "" },
       navigate: jest.fn(),
       back: jest.fn(),
-      subscribe: jest.fn(() => () => {}),
+      subscribe: jest.fn(() => jest.fn()),
       link: jest.fn((to: string) => `/h/demo/a/widget${to === "/" ? "" : to}`),
     },
     nav: { setBreadcrumbs: jest.fn(), setTitle: jest.fn() },
@@ -202,6 +202,64 @@ describe("createIframeAppModule", () => {
     expect(sdk.router.navigate).toHaveBeenCalledWith("/detail", { replace: true });
     embedPort.close();
     await appModule.unmount(el);
+  });
+
+  it("pushes a host-side route change down to the embed over the channel (T17)", async () => {
+    const el = attachedSlot();
+    const sdk = fakeSdk();
+    const appModule = createIframeAppModule(fakeManifest());
+
+    const mountPromise = appModule.mount(el, sdk);
+    const iframe = el.querySelector("iframe")!;
+    const postMessageSpy = jest
+      .spyOn(iframe.contentWindow!, "postMessage")
+      .mockImplementation(() => {});
+    dispatchReady(iframe, "1.0.0");
+    await mountPromise;
+
+    const embedPort = (
+      postMessageSpy.mock.calls[0] as unknown as [unknown, string, MessagePort[]]
+    )[2][0];
+    const gotPush = new Promise<{ method: string; payload: unknown }>((resolve) => {
+      embedPort.addEventListener(
+        "message",
+        (event) => resolve((event as MessageEvent).data as { method: string; payload: unknown }),
+        { once: true },
+      );
+    });
+    embedPort.start();
+
+    const onHostRouteChange = (sdk.router.subscribe as jest.Mock).mock.calls[0][0] as (
+      location: unknown,
+    ) => void;
+    const newLocation = { pathname: "/r/999", search: "", hash: "" };
+    onHostRouteChange(newLocation);
+
+    const push = await gotPush;
+    expect(push.method).toBe("router.locationChanged");
+    expect(push.payload).toEqual(newLocation);
+    embedPort.close();
+    await appModule.unmount(el);
+  });
+
+  it("stops pushing route changes after unmount", async () => {
+    const el = attachedSlot();
+    const sdk = fakeSdk();
+    const appModule = createIframeAppModule(fakeManifest());
+
+    const mountPromise = appModule.mount(el, sdk);
+    const iframe = el.querySelector("iframe")!;
+    const postMessageSpy = jest
+      .spyOn(iframe.contentWindow!, "postMessage")
+      .mockImplementation(() => {});
+    dispatchReady(iframe, "1.0.0");
+    await mountPromise;
+    (postMessageSpy.mock.calls[0] as unknown as [unknown, string, MessagePort[]])[2][0].close();
+
+    const unsubscribe = (sdk.router.subscribe as jest.Mock).mock.results[0].value as jest.Mock;
+    await appModule.unmount(el);
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
   it("removes the iframe and stops bridging on unmount", async () => {

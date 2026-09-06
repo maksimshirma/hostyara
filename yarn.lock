@@ -957,6 +957,7 @@ __metadata:
   resolution: "@hostyara/demo-recipes@workspace:apps/demo-recipes"
   dependencies:
     "@hostyara/contracts": "workspace:^"
+    "@hostyara/iframe-embed": "workspace:^"
     "@hostyara/router-react": "workspace:^"
     "@module-federation/enhanced": "npm:^2.9.0"
     "@rspack/cli": "npm:^2.2.2"
@@ -993,7 +994,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@hostyara/iframe-embed@workspace:packages/iframe-embed":
+"@hostyara/iframe-embed@workspace:^, @hostyara/iframe-embed@workspace:packages/iframe-embed":
   version: 0.0.0-use.local
   resolution: "@hostyara/iframe-embed@workspace:packages/iframe-embed"
   dependencies:

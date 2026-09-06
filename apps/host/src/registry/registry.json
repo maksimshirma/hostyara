@@ -18,6 +18,25 @@
     "network": { "connect": [] }
   },
   {
+    "id": "recipes-iframe",
+    "name": "Рецепты (iframe)",
+    "version": "0.1.0",
+    "contract": "1",
+    "category": "Кухня",
+    "tags": ["еда", "планирование"],
+    "surfaces": { "search": true },
+    "permissions": [],
+    "entities": [{ "type": "recipe", "route": "/r/:id/:slug" }],
+    "routes": ["/", "/r/:id/*"],
+    "mount": {
+      "type": "iframe",
+      "remoteEntry": "http://localhost:5174/iframe.html",
+      "exposed": "",
+      "styles": []
+    },
+    "network": { "connect": [] }
+  },
+  {
     "id": "budget",
     "name": "Бюджет",
     "version": "0.1.0",

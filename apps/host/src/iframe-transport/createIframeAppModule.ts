@@ -71,6 +71,15 @@ export function createIframeAppModule(manifest: AppManifest): AppModule {
       hostPort = port1;
       const channel = createMessagePortChannel(port1);
       unbindHandlers = bridgeChannelToSdk(channel, sdk);
+      // The embed's own router is memory-only (T17): it never sees a real
+      // popstate, so a route change from outside the iframe — dock click,
+      // hid switch, real browser Back/Forward — has to be pushed in over
+      // the same channel or the embedded app's location goes stale.
+      unbindHandlers.push(
+        sdk.router.subscribe((location) => {
+          void channel.request("router.locationChanged", location);
+        }),
+      );
 
       const ack: IframeAckMessage = {
         type: "hostyara:iframe-ack",

@@ -52,6 +52,19 @@ describe("createSdkProxy", () => {
     });
   });
 
+  it("updates router.location synchronously on navigate, without waiting for the round trip", () => {
+    const channel = fakeChannel();
+    const sdk = createSdkProxy(channel, fakeAck());
+
+    sdk.router.navigate("/r/999?servings=2#steps");
+
+    expect(sdk.router.location).toEqual({
+      pathname: "/r/999",
+      search: "?servings=2",
+      hash: "#steps",
+    });
+  });
+
   it("forwards router.back as a channel request", () => {
     const channel = fakeChannel();
     const sdk = createSdkProxy(channel, fakeAck());
@@ -103,12 +116,27 @@ describe("createSdkProxy", () => {
     expect(channel.request).toHaveBeenCalledWith("share.create", { type: "recipe", id: "8421" });
   });
 
-  it("subscribe is a no-op stub (T17 wires live push updates)", () => {
-    const sdk = createSdkProxy(fakeChannel(), fakeAck());
+  it("updates router.location and notifies subscribers when the host pushes a change", () => {
+    const channel = fakeChannel();
+    const sdk = createSdkProxy(channel, fakeAck());
     const listener = jest.fn();
+    sdk.router.subscribe(listener);
 
+    const pushed = { pathname: "/r/999", search: "", hash: "" };
+    channel.handlers.get("router.locationChanged")?.(pushed);
+
+    expect(sdk.router.location).toEqual(pushed);
+    expect(listener).toHaveBeenCalledWith(pushed);
+  });
+
+  it("stops notifying a location change after unsubscribe", () => {
+    const channel = fakeChannel();
+    const sdk = createSdkProxy(channel, fakeAck());
+    const listener = jest.fn();
     const unsubscribe = sdk.router.subscribe(listener);
     unsubscribe();
+
+    channel.handlers.get("router.locationChanged")?.({ pathname: "/r/1", search: "", hash: "" });
 
     expect(listener).not.toHaveBeenCalled();
   });
