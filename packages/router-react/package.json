@@ -1,0 +1,14 @@
+{
+  "name": "@hostyara/router-react",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@hostyara/contracts": "workspace:^",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3"
+  }
+}
