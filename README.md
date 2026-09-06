@@ -1,6 +1,15 @@
 # Hostyara
 
-A React + TypeScript Yarn Workspaces monorepo for the family super-app host/shell architecture: a shell app (`apps/host`) plus the shared contracts, SDK, design system, lifecycle API, event bus, and app registry that microfrontends will integrate against. Built on Vite with a complete toolchain including Jest, Playwright, Storybook, Oxlint, and Oxfmt.
+A TypeScript Yarn Workspaces monorepo for a family super-app host/shell
+architecture: a shell app (`apps/host`, React + Vite) that mounts independent
+microfrontends over Module Federation (or an iframe, for isolation) — plus
+two demo remotes on different frameworks (`apps/demo-recipes`, React;
+`apps/demo-budget`, Vue) and the shared packages they all build against
+(contracts, SDK types, design system, lifecycle, conformance suite,
+dev-harness, framework router adapters). See **[docs/](./docs/)** for the
+platform reference (SDK, manifest format, URL scheme, how to build your own
+subapp) and **[docs/demo-script.md](./docs/demo-script.md)** for a guided
+walkthrough of what the platform actually does end to end.
 
 ## Prerequisites
 
@@ -101,30 +110,47 @@ git commit --no-verify
 git push --no-verify
 ```
 
+## Continuous Integration
+
+`.github/workflows/pr-checks.yml` runs on every PR: typecheck, lint, format
+check, unit tests, a dedicated conformance job (both demo apps), Playwright
+e2e, and a production build (host + both demo remotes) whose `dist/`
+outputs are uploaded as a build artifact. `.github/workflows/build.yml`
+rebuilds the host on every push to `master`.
+
 ## Project Structure
 
 ```
 hostyara/
 ├── packages/
-│   ├── contracts/            # @hostyara/contracts — shared typed contracts/schemas
-│   ├── sdk/                  # @hostyara/sdk — public Host SDK (auth, navigation, notifications, feature flags, permissions)
+│   ├── contracts/            # @hostyara/contracts — AppModule, HostSDK, AppManifest, ...
+│   ├── sdk/                  # @hostyara/sdk — re-exports the contracts' SDK types
 │   ├── ui/                   # @hostyara/ui — design system (tokens, theme, React components)
-│   ├── lifecycle/            # @hostyara/lifecycle — microfrontend lifecycle API
-│   ├── event-bus/            # @hostyara/event-bus — typed host<->app pub/sub (skeleton)
-│   └── registry/             # @hostyara/registry — in-memory app metadata registry
+│   ├── lifecycle/            # @hostyara/lifecycle — createLifecycle(mount/unmount) helper
+│   ├── event-bus/            # @hostyara/event-bus — HostChannel (in-memory + MessagePort)
+│   ├── registry/             # @hostyara/registry — AppRegistry (resolve by id, contract check)
+│   ├── conformance/          # @hostyara/conformance — the AppModule conformance suite
+│   ├── dev-harness/          # @hostyara/dev-harness — run a remote standalone, no host
+│   ├── iframe-embed/         # @hostyara/iframe-embed — HostSDK proxy for the iframe transport
+│   ├── router-react/         # @hostyara/router-react — sdk.router -> React Router history
+│   └── router-vue/           # @hostyara/router-vue — sdk.router -> Vue Router history
 ├── apps/
-│   └── host/                 # @hostyara/host — the shell app
-│       ├── src/              # App source (main.tsx, App.tsx, ...)
-│       ├── e2e/              # Playwright E2E tests
-│       ├── .storybook/       # Storybook config (also picks up packages/*/src stories)
-│       ├── index.html
-│       ├── vite.config.ts
-│       └── playwright.config.ts
+│   ├── host/                 # @hostyara/host — the shell app (Vite)
+│   │   ├── src/              # router, chrome, registry, mount-manager, csp, observability, ...
+│   │   ├── e2e/               # Playwright E2E tests
+│   │   ├── .storybook/       # Storybook config (also picks up packages/*/src stories)
+│   │   └── vite.config.ts
+│   ├── demo-recipes/         # @hostyara/demo-recipes — React remote (Rspack)
+│   └── demo-budget/          # @hostyara/demo-budget — Vue remote (Rspack)
+├── docs/                     # Platform reference + demo script — see docs/README.md
+├── .github/workflows/        # CI: typecheck, lint, format, unit, conformance, e2e, build
 ├── types/
 │   └── css-modules.d.ts      # shared CSS Modules ambient declaration
 ├── .husky/                   # Git hooks
 ├── tsconfig.base.json        # shared strict compilerOptions
-├── tsconfig.json             # root workspace-wide typecheck config
+├── tsconfig.json             # root typecheck config (covers packages/*/src + apps/host/src only —
+│                              # demo-recipes/demo-budget have their own tsconfig, type-checked via
+│                              # ts-jest at test time, not by root `yarn typecheck`)
 ├── jest.config.ts            # Jest config (covers packages/ + apps/)
 ├── jest.setup.ts             # shared Jest setup (jest-dom matchers)
 ├── .oxlintrc.json            # Oxlint config
@@ -145,15 +171,25 @@ Each package under `packages/*` and `apps/host` has its own minimal `package.jso
 
 ## Packages
 
-| Package               | Purpose                                                                                                                                                                                                               |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@hostyara/contracts` | Shared typed contracts/schemas between host and microfrontends (`User`, `AppManifest`, `HostContext`, `HostSDK`, `MountContext`, `MfeModule`, `RegistryEntry`, `RemoteDescriptor`, `EventBus`, `SharedStateAccessor`) |
-| `@hostyara/sdk`       | Public typed Host SDK surface: `AuthSDK`, `NavigationSDK`, `NotificationsSDK`, `FeatureFlagsSDK`, `PermissionsSDK`                                                                                                    |
-| `@hostyara/ui`        | Shared design system: tokens, theme, React components (e.g. `Button`)                                                                                                                                                 |
-| `@hostyara/lifecycle` | Standardized microfrontend lifecycle API (`bootstrap`/`mount`/`unmount`/`update`/`prefetch`/`destroy`)                                                                                                                |
-| `@hostyara/event-bus` | Typed host<->app pub/sub — skeleton only, implementation pending                                                                                                                                                      |
-| `@hostyara/registry`  | In-memory `AppRegistry` for app metadata, routes, versions, permissions, health status                                                                                                                                |
-| `@hostyara/host`      | The shell app: auth, session, routing, layout, orchestration                                                                                                                                                          |
+See **[docs/](./docs/)** for the full reference on any of these; this table
+is just a map of where to look.
+
+| Package                  | Purpose                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `@hostyara/contracts`    | The canonical types: `AppModule`, `HostSDK`, `AppManifest`, and their component pieces                                   |
+| `@hostyara/sdk`          | Re-exports the same SDK-related types from `@hostyara/contracts` for convenience                                         |
+| `@hostyara/ui`           | Shared design system: tokens, theme, React components (e.g. `Button`)                                                    |
+| `@hostyara/lifecycle`    | `createLifecycle()` — a tiny helper for defining an `AppModule` with partial overrides                                   |
+| `@hostyara/event-bus`    | `HostChannel` request/on RPC — in-memory and `MessagePort` (cross-realm/iframe) implementations                          |
+| `@hostyara/registry`     | `AppRegistry` — resolves an app id to its manifest, enforcing the contract major version                                 |
+| `@hostyara/conformance`  | The `AppModule` conformance suite every app runs from its own Jest test — see [docs/app-module.md](./docs/app-module.md) |
+| `@hostyara/dev-harness`  | Runs a remote's `AppModule` standalone (own shadow root, own history) — no host needed                                   |
+| `@hostyara/iframe-embed` | `HostSDK` proxy + handshake for apps mounted via the iframe transport instead of Module Federation                       |
+| `@hostyara/router-react` | Adapts `sdk.router` to React Router's `history` interface                                                                |
+| `@hostyara/router-vue`   | Adapts `sdk.router` to Vue Router's `history` interface                                                                  |
+| `@hostyara/host`         | The shell app: routing, mount manager, remote loader, CSP generation, observability                                      |
+| `@hostyara/demo-recipes` | React remote demonstrating all three transports (Module Federation, iframe, standalone)                                  |
+| `@hostyara/demo-budget`  | Vue remote demonstrating Module Federation (no iframe/standalone entry yet)                                              |
 
 ## Environment
 
@@ -182,8 +218,8 @@ npx playwright install --with-deps chromium
 
 ### Port already in use
 
-If port 3000 is in use, modify `vite.config.ts` or:
-
-```bash
-PORT=3001 yarn dev
-```
+Ports are hardcoded, not read from an environment variable: `3000` for the
+host (`apps/host/vite.config.ts`'s `server.port`), `5174` for demo-recipes
+and `5175` for demo-budget (each app's own `rspack.config.mjs`'s
+`devServer.port`). If one is in use, edit the relevant config file directly
+— `PORT=... yarn dev` has no effect.

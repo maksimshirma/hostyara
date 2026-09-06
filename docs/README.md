@@ -20,6 +20,10 @@ runs inside the hostyara shell, or working on the shell itself.
 - **[routing.md](./routing.md)** — the host's URL scheme
   (`/h/:hid/a/:appId/*`), how history and scroll restoration work, and why
   apps never touch `window.history` directly.
+- **[demo-script.md](./demo-script.md)** — a guided walkthrough proving all
+  of the above with a live instance: two frameworks in one shell, style
+  isolation, a working Back button, deep links, remote failure isolation,
+  and the `?_remote=` local-override workflow.
 
 ## What's authoritative
 
