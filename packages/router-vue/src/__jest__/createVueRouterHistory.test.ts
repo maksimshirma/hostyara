@@ -16,7 +16,7 @@ function createFakeSdk(initialPathname: string) {
     back: jest.fn(),
     subscribe: jest.fn((callback: (loc: typeof location) => void) => {
       listeners.add(callback);
-      return () => listeners.delete(callback);
+      return jest.fn(() => listeners.delete(callback));
     }),
     link: jest.fn((to: string) => `/h/f3k2xp/a/budget${to === "/" ? "" : to}`),
   };
@@ -123,15 +123,19 @@ describe("createVueRouterHistory", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-  it("destroy clears all listeners", () => {
-    const { sdk, externalChange } = createFakeSdk("/");
+  it("unsubscribes from the sdk once the last listener is removed", () => {
+    // vue-router calls the function returned by listen() as its own
+    // app.unmount() cleanup — it never calls a destroy() method (see
+    // createVueRouterHistory.ts) — so this is what actually has to run
+    // the sdk-level cleanup, or the subscription leaks for the page's
+    // whole lifetime.
+    const { sdk, router } = createFakeSdk("/");
     const history = createVueRouterHistory(sdk);
-    const listener = jest.fn();
-    history.listen(listener);
+    const unlisten = history.listen(jest.fn());
 
-    history.destroy();
-    externalChange("/tx/1");
+    unlisten();
 
-    expect(listener).not.toHaveBeenCalled();
+    const sdkUnsubscribe = router.subscribe.mock.results[0].value;
+    expect(sdkUnsubscribe).toHaveBeenCalledTimes(1);
   });
 });

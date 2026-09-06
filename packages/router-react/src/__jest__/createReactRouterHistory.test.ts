@@ -17,7 +17,7 @@ function createFakeSdk(initialPathname: string) {
     back: jest.fn(),
     subscribe: jest.fn((callback: () => void) => {
       listeners.add(callback);
-      return () => listeners.delete(callback);
+      return jest.fn(() => listeners.delete(callback));
     }),
     link: jest.fn((to: string) => `/h/f3k2xp/a/recipes${to === "/" ? "" : to}`),
   };
@@ -133,5 +133,20 @@ describe("createReactRouterHistory", () => {
     externalChange("/r/1");
 
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("unsubscribes from the sdk once the last listener is removed", () => {
+    // react-router's HistoryRouter calls the function returned by listen()
+    // as its own useLayoutEffect cleanup on unmount — this is what
+    // actually has to run the sdk-level cleanup, or the subscription
+    // leaks for the page's whole lifetime.
+    const { sdk, router } = createFakeSdk("/");
+    const history = createReactRouterHistory(sdk);
+    const unlisten = history.listen(jest.fn());
+
+    unlisten();
+
+    const sdkUnsubscribe = router.subscribe.mock.results[0].value;
+    expect(sdkUnsubscribe).toHaveBeenCalledTimes(1);
   });
 });

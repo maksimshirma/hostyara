@@ -45,7 +45,7 @@ export function createReactRouterHistory(sdk: HostSDK): ReactRouterHistory {
     for (const listener of listeners) listener({ action: nextAction, location, delta: 0 });
   }
 
-  sdk.router.subscribe(() => {
+  const unsubscribeFromSdk = sdk.router.subscribe(() => {
     if (suppressNextHostNotification) {
       suppressNextHostNotification = false;
       return;
@@ -89,9 +89,19 @@ export function createReactRouterHistory(sdk: HostSDK): ReactRouterHistory {
       }
       window.history.go(delta);
     },
+    // react-router's own HistoryRouter registers exactly one listener via
+    // useLayoutEffect(() => history.listen(setState), [...]) and calls the
+    // returned function as that effect's cleanup on unmount — unlike
+    // vue-router, this one *is* a real, synchronous lifecycle hook, but
+    // the same principle applies: unsubscribing from the sdk once the
+    // last listener goes away is what actually runs on unmount, since sdk
+    // subscribe/unsubscribe has no lifecycle of its own to hook into.
     listen(listener) {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) unsubscribeFromSdk();
+      };
     },
   };
 }

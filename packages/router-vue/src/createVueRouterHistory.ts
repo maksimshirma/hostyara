@@ -28,7 +28,7 @@ export function createVueRouterHistory(sdk: HostSDK): RouterHistory {
     }
   }
 
-  sdk.router.subscribe((location) => {
+  const unsubscribeFromSdk = sdk.router.subscribe((location) => {
     const from = current;
     current = toLocationString(location);
     if (suppressNextHostNotification) {
@@ -65,15 +65,22 @@ export function createVueRouterHistory(sdk: HostSDK): RouterHistory {
       }
       window.history.go(delta);
     },
+    // vue-router calls this exactly once internally and stores the
+    // returned function as its own unmount hook — it never calls a
+    // RouterHistory's destroy() (dead code on any custom implementation,
+    // confirmed against vue-router's own install(): only the value
+    // returned here ever gets invoked, on app.unmount()). Unsubscribing
+    // from the sdk once the last listener goes away is what actually runs
+    // on unmount, not a destroy() nothing calls.
     listen(callback: Listener) {
       listeners.add(callback);
-      return () => listeners.delete(callback);
+      return () => {
+        listeners.delete(callback);
+        if (listeners.size === 0) unsubscribeFromSdk();
+      };
     },
     createHref(to: string) {
       return sdk.router.link(to);
-    },
-    destroy() {
-      listeners.clear();
     },
   };
 
