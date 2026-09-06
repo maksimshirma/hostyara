@@ -1,0 +1,20 @@
+{
+  "name": "@hostyara/demo-budget",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rspack serve",
+    "build": "rspack build"
+  },
+  "dependencies": {
+    "@hostyara/contracts": "workspace:^",
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@module-federation/enhanced": "^2.9.0",
+    "@rspack/cli": "^2.2.2",
+    "@rspack/core": "^2.2.2",
+    "@rspack/dev-server": "^2.2.1"
+  }
+}

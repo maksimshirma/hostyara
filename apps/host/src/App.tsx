@@ -44,11 +44,11 @@ function RemoteHarness() {
   const slotRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState("idle");
 
-  async function handleLoad() {
-    setStatus("loading");
+  async function loadApp(appId: string) {
+    setStatus(`loading ${appId}`);
     try {
       const registry = loadRegistry();
-      const result = registry.resolve("recipes");
+      const result = registry.resolve(appId);
       if (!result.ok) {
         setStatus(`error: ${result.error.kind}`);
         return;
@@ -56,18 +56,31 @@ function RemoteHarness() {
 
       const appModule = await remoteLoader.loadRemoteModule(result.manifest);
       if (slotRef.current) {
+        await mountManager.unmount(slotRef.current);
         await mountManager.mount(slotRef.current, result.manifest, appModule, fakeSdk);
       }
-      setStatus("mounted");
+      setStatus(`mounted ${appId}`);
     } catch (error) {
       setStatus(`error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
+  async function switchTenTimes() {
+    for (let i = 0; i < 10; i++) {
+      await loadApp(i % 2 === 0 ? "recipes" : "budget");
+    }
+  }
+
   return (
     <div>
-      <button type="button" onClick={handleLoad}>
+      <button type="button" onClick={() => loadApp("recipes")}>
         Load recipes remote
+      </button>
+      <button type="button" onClick={() => loadApp("budget")}>
+        Load budget remote
+      </button>
+      <button type="button" onClick={switchTenTimes}>
+        Switch 10x
       </button>
       <p>Status: {status}</p>
       <div ref={slotRef} />

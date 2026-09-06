@@ -9,7 +9,7 @@
   ],
   "type": "commonjs",
   "scripts": {
-    "dev": "yarn workspace @hostyara/host dev",
+    "dev": "concurrently -n host,recipes,budget -c blue,green,magenta \"yarn workspace @hostyara/host dev\" \"yarn workspace @hostyara/demo-recipes dev\" \"yarn workspace @hostyara/demo-budget dev\"",
     "build": "yarn workspace @hostyara/host build",
     "preview": "yarn workspace @hostyara/host preview",
     "typecheck": "tsc --noEmit",
@@ -42,6 +42,7 @@
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^10.0.5",
     "husky": "^9.1.7",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.4.2",
