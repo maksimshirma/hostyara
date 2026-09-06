@@ -1,26 +1,19 @@
-import { AppManifest, AppModule, HostSDK } from "@hostyara/contracts";
+import { AppModule } from "@hostyara/contracts";
+import { createFakeManifest, createFakeSdk } from "../../testing/fixtures";
 import { createMountManager } from "../createMountManager";
 
-const manifest: AppManifest = {
+const manifest = createFakeManifest({
   id: "recipes",
   name: "Рецепты",
-  version: "1.0.0",
-  contract: "1",
   category: "Кухня",
-  tags: [],
-  surfaces: {},
-  permissions: [],
-  entities: [],
-  routes: ["/"],
   mount: {
     remoteEntry: "https://cdn.example.com/recipes/remoteEntry.js",
     exposed: "./app",
     styles: ["https://cdn.example.com/recipes/app.css"],
   },
-  network: { connect: [] },
-};
+});
 
-const sdk = {} as HostSDK;
+const sdk = createFakeSdk();
 
 function createAppModule(): AppModule & { mount: jest.Mock; unmount: jest.Mock } {
   return {

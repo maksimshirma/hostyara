@@ -1,6 +1,7 @@
 import { MessageChannel, MessagePort } from "node:worker_threads";
-import { AppManifest, HostSDK } from "@hostyara/contracts";
 import { createIframeAppModule } from "../createIframeAppModule";
+import { createFakeManifest, createFakeSdk } from "../../testing/fixtures";
+import { createAttachedTestSlot } from "../../testing/testSlot";
 
 // jsdom has no MessageChannel, and createIframeAppModule constructs one at
 // runtime — it needs a real global here. Not polyfilled in jest.setup.ts
@@ -14,50 +15,14 @@ globalThis.MessagePort = MessagePort as unknown as typeof globalThis.MessagePort
 const REMOTE_ENTRY = "http://embed.example.com/index.html";
 const EXPECTED_ORIGIN = "http://embed.example.com";
 
-function fakeManifest(overrides: Partial<AppManifest> = {}): AppManifest {
-  return {
-    id: "widget",
-    name: "Widget",
-    version: "1.0.0",
-    contract: "1.0.0",
-    category: "utility",
-    tags: [],
-    surfaces: {} as AppManifest["surfaces"],
-    permissions: [],
-    entities: [],
-    routes: [],
+function fakeManifest(overrides: Parameters<typeof createFakeManifest>[0] = {}) {
+  return createFakeManifest({
     mount: { type: "iframe", remoteEntry: REMOTE_ENTRY, exposed: "", styles: [] },
-    network: { connect: [] },
     ...overrides,
-  };
+  });
 }
 
-function fakeSdk(): HostSDK {
-  return {
-    mode: "household",
-    basename: "/h/demo/a/widget",
-    context: {
-      mode: "household",
-      hid: "demo",
-      user: { id: "u1", name: "Demo", email: "demo@example.com" },
-      permissions: [],
-    },
-    router: {
-      location: { pathname: "/", search: "", hash: "" },
-      navigate: jest.fn(),
-      back: jest.fn(),
-      subscribe: jest.fn(() => jest.fn()),
-      link: jest.fn((to: string) => `/h/demo/a/widget${to === "/" ? "" : to}`),
-    },
-    nav: { setBreadcrumbs: jest.fn(), setTitle: jest.fn() },
-    apps: { open: jest.fn(), canOpen: jest.fn(() => true) },
-    share: {
-      create: jest.fn().mockResolvedValue({ url: "u", expiresAt: "e" }),
-      list: jest.fn().mockResolvedValue([]),
-      revoke: jest.fn().mockResolvedValue(undefined),
-    },
-  };
-}
+const fakeSdk = createFakeSdk;
 
 function dispatchReady(
   iframe: HTMLIFrameElement,
@@ -73,21 +38,13 @@ function dispatchReady(
   );
 }
 
-// jsdom only gives an iframe a contentWindow once it's connected to the
-// live document — a detached slot element never gets one.
-function attachedSlot(): HTMLDivElement {
-  const el = document.createElement("div");
-  document.body.append(el);
-  return el;
-}
-
 afterEach(() => {
   document.body.replaceChildren();
 });
 
 describe("createIframeAppModule", () => {
   it("creates an iframe pointed at mount.remoteEntry", async () => {
-    const el = attachedSlot();
+    const el = createAttachedTestSlot();
     const appModule = createIframeAppModule(fakeManifest());
 
     const mountPromise = appModule.mount(el, fakeSdk());
@@ -107,7 +64,7 @@ describe("createIframeAppModule", () => {
   });
 
   it("sends an ack with a transferred port once the embed announces readiness", async () => {
-    const el = attachedSlot();
+    const el = createAttachedTestSlot();
     const sdk = fakeSdk();
     const appModule = createIframeAppModule(fakeManifest());
 
@@ -140,7 +97,7 @@ describe("createIframeAppModule", () => {
   });
 
   it("ignores a ready message from a different origin", async () => {
-    const el = attachedSlot();
+    const el = createAttachedTestSlot();
     const appModule = createIframeAppModule(fakeManifest());
 
     const mountPromise = appModule.mount(el, fakeSdk());
@@ -157,7 +114,7 @@ describe("createIframeAppModule", () => {
   });
 
   it("rejects and removes the iframe when the embed's contract major doesn't match the manifest's", async () => {
-    const el = attachedSlot();
+    const el = createAttachedTestSlot();
     const appModule = createIframeAppModule(fakeManifest({ contract: "1.0.0" }));
 
     const mountPromise = appModule.mount(el, fakeSdk());
@@ -169,7 +126,7 @@ describe("createIframeAppModule", () => {
   });
 
   it("bridges a router.navigate request from the embed to the real sdk", async () => {
-    const el = attachedSlot();
+    const el = createAttachedTestSlot();
     const sdk = fakeSdk();
     const appModule = createIframeAppModule(fakeManifest());
 
@@ -205,7 +162,7 @@ describe("createIframeAppModule", () => {
   });
 
   it("pushes a host-side route change down to the embed over the channel (T17)", async () => {
-    const el = attachedSlot();
+    const el = createAttachedTestSlot();
     const sdk = fakeSdk();
     const appModule = createIframeAppModule(fakeManifest());
 
@@ -243,7 +200,7 @@ describe("createIframeAppModule", () => {
   });
 
   it("stops pushing route changes after unmount", async () => {
-    const el = attachedSlot();
+    const el = createAttachedTestSlot();
     const sdk = fakeSdk();
     const appModule = createIframeAppModule(fakeManifest());
 
@@ -263,7 +220,7 @@ describe("createIframeAppModule", () => {
   });
 
   it("removes the iframe and stops bridging on unmount", async () => {
-    const el = attachedSlot();
+    const el = createAttachedTestSlot();
     const sdk = fakeSdk();
     const appModule = createIframeAppModule(fakeManifest());
 

@@ -19,8 +19,8 @@
     "format:check": "oxfmt --check .",
     "test": "jest",
     "test:watch": "jest --watch",
-    "e2e": "yarn workspace @hostyara/host e2e",
-    "e2e:ui": "yarn workspace @hostyara/host e2e:ui",
+    "e2e": "playwright test --config=apps/host/playwright.config.ts",
+    "e2e:ui": "playwright test --config=apps/host/playwright.config.ts --ui",
     "storybook": "yarn workspace @hostyara/host storybook",
     "build-storybook": "yarn workspace @hostyara/host build-storybook",
     "prepare": "husky"
