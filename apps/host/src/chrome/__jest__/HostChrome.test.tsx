@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const initMock = jest.fn();
@@ -23,6 +23,10 @@ beforeEach(() => {
   global.fetch = jest.fn(() =>
     Promise.resolve({ text: () => Promise.resolve("") }),
   ) as unknown as typeof fetch;
+  // jsdom doesn't implement scrollTo; the host's scroll-restoration timer
+  // (scheduled on every popstate) would otherwise log a "not implemented"
+  // error on every test that simulates one.
+  jest.spyOn(window, "scrollTo").mockImplementation(() => {});
 });
 
 describe("HostChrome", () => {
@@ -97,6 +101,48 @@ describe("HostChrome", () => {
     expect(await screen.findByText(/не отвечает/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Рецепты" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Бюджет" })).toBeInTheDocument();
+  });
+
+  it("delivers a hid change to the mounted app via context/basename, without remounting (T15)", async () => {
+    loadRemoteMock.mockResolvedValue(fakeAppModule);
+    render(<HostChrome />);
+
+    await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
+    await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
+
+    const sdk = fakeAppModule.mount.mock.calls[0][1];
+    expect(sdk.context.hid).toBe("demo");
+    expect(sdk.basename).toBe("/h/demo-semya-ivanovyh/a/recipes");
+
+    // Simulates the browser's own "Back"/"Forward" (a real one never goes
+    // through history.pushState) — the dev history guard can't tell that
+    // apart from a genuine second writer, so it warns here as expected.
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    act(() => {
+      window.history.pushState(null, "", "/h/otherhid/a/recipes");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    warnSpy.mockRestore();
+
+    await waitFor(() => expect(sdk.context.hid).toBe("otherhid"));
+    expect(sdk.basename).toBe("/h/otherhid/a/recipes");
+    expect(fakeAppModule.mount).toHaveBeenCalledTimes(1);
+    expect(fakeAppModule.unmount).not.toHaveBeenCalled();
+  });
+
+  it("remounts when switching away to another app and back, even to a previously-open one", async () => {
+    loadRemoteMock.mockResolvedValue(fakeAppModule);
+    render(<HostChrome />);
+
+    await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
+    await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByRole("link", { name: "Бюджет" }));
+    await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(2));
+
+    await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
+    await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(3));
+    expect(fakeAppModule.unmount).toHaveBeenCalledTimes(2);
   });
 
   it("shows a load-failed state and recovers via the retry button", async () => {

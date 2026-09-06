@@ -8,6 +8,7 @@ import {
   buildAppPath,
   createHostRouter,
   createSdkRouter,
+  getLiveBasename,
   HostRouter,
   installDevHistoryGuard,
   loadHouseholds,
@@ -28,17 +29,27 @@ const DEFAULT_HID = "demo";
 // nav/apps/share are still stand-ins (no breadcrumbs, cross-app links, or
 // sharing built yet) — router is the real thing, wired to the host's own
 // router via createSdkRouter.
-function buildSdk(hid: string, basename: string, hostRouter: HostRouter): HostSDK {
+//
+// basename/context read from hostRouter live (see createSdkRouter) rather
+// than being captured once here — a household switch (hid change) while
+// this app stays mounted (T15) must update what the app sees without a
+// remount, and a fresh read on every access is what makes that automatic.
+function buildSdk(appId: string, hostRouter: HostRouter): HostSDK {
   return {
     mode: "household",
-    basename,
-    context: {
-      mode: "household",
-      hid,
-      user: { id: "u1", name: "Demo", email: "demo@example.com" },
-      permissions: [],
+    get basename() {
+      return getLiveBasename(hostRouter, appId);
     },
-    router: createSdkRouter(hostRouter, basename),
+    get context() {
+      const route = hostRouter.getRoute();
+      return {
+        mode: "household" as const,
+        hid: route.kind === "space" ? route.hid : "",
+        user: { id: "u1", name: "Demo", email: "demo@example.com" },
+        permissions: [],
+      };
+    },
+    router: createSdkRouter(hostRouter, appId),
     nav: { setBreadcrumbs: () => {}, setTitle: () => {} },
     apps: { open: () => {}, canOpen: () => false },
     share: {
@@ -61,9 +72,7 @@ function toSlotErrorReason(error: unknown): SlotErrorReason {
 }
 
 interface LastAttempt {
-  hid: string;
   appId: string;
-  basename: string;
 }
 
 export function HostChrome() {
@@ -103,10 +112,10 @@ export function HostChrome() {
   // firing twice under StrictMode) can call openApp again before a prior
   // call finishes. The generation counter lets a superseded call detect
   // that and back out instead of racing another mount into the same slot.
-  async function openApp(hid: string, appId: string, basename: string) {
+  async function openApp(appId: string) {
     const generation = ++openGenerationRef.current;
     attemptedAppIdRef.current = appId;
-    setLastAttempt({ hid, appId, basename });
+    setLastAttempt({ appId });
 
     const resolved = registry.resolve(appId);
     const appName = resolved.ok ? resolved.manifest.name : appId;
@@ -138,7 +147,7 @@ export function HostChrome() {
           slotRef.current,
           resolved.manifest,
           appModule,
-          buildSdk(hid, basename, router),
+          buildSdk(appId, router),
         );
         if (generation !== openGenerationRef.current) {
           await mountManager.unmount(slotRef.current);
@@ -166,7 +175,7 @@ export function HostChrome() {
   // actually differs from what's already mounted.
   useEffect(() => {
     if (route.kind === "space" && route.area.kind === "app" && route.area.appId !== activeAppId) {
-      void openApp(route.hid, route.area.appId, route.area.basename);
+      void openApp(route.area.appId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route, activeAppId]);
@@ -176,7 +185,7 @@ export function HostChrome() {
   }
 
   function retry(): void {
-    if (lastAttempt) void openApp(lastAttempt.hid, lastAttempt.appId, lastAttempt.basename);
+    if (lastAttempt) void openApp(lastAttempt.appId);
   }
 
   useEffect(() => {

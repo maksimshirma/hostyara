@@ -23,13 +23,16 @@ describe("createHostRouter", () => {
     detach();
   });
 
-  it("does not touch the URL when it is already canonical", () => {
+  it("does not run the canonical redirect when the URL is already canonical", () => {
     setLocation("/h/f3k2xp-semya-ivanovyh/a/recipes");
     const replaceSpy = jest.spyOn(window.history, "replaceState");
     const router = createHostRouter(households);
     const detach = router.attach();
 
-    expect(replaceSpy).not.toHaveBeenCalled();
+    // attach() itself writes a scroll-restoration key once; canonicalizing
+    // an already-canonical URL must not add a second rewrite on top of it.
+    expect(replaceSpy).toHaveBeenCalledTimes(1);
+    expect(window.location.pathname).toBe("/h/f3k2xp-semya-ivanovyh/a/recipes");
     replaceSpy.mockRestore();
     detach();
   });
@@ -67,7 +70,11 @@ describe("createHostRouter", () => {
 
     router.navigate("/h/f3k2xp-semya-ivanovyh/a/budget");
 
-    expect(pushSpy).toHaveBeenCalledWith(null, "", "/h/f3k2xp-semya-ivanovyh/a/budget");
+    expect(pushSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ hostyaraScrollKey: expect.any(String) }),
+      "",
+      "/h/f3k2xp-semya-ivanovyh/a/budget",
+    );
     expect(window.location.pathname).toBe("/h/f3k2xp-semya-ivanovyh/a/budget");
     expect(listener).toHaveBeenCalledTimes(1);
     pushSpy.mockRestore();
@@ -126,6 +133,30 @@ describe("createHostRouter", () => {
     window.dispatchEvent(new PopStateEvent("popstate"));
 
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("restores the scroll position saved for the entry a popstate lands on", () => {
+    jest.useFakeTimers();
+    setLocation("/h/f3k2xp-semya-ivanovyh/a/recipes");
+    const router = createHostRouter(households);
+    const detach = router.attach();
+    const scrollToSpy = jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+    Object.defineProperty(window, "scrollY", { value: 240, configurable: true });
+
+    // Leaving the recipes entry (scrollY 240, key allocated by attach())
+    // for a fresh budget entry.
+    router.navigate("/h/f3k2xp-semya-ivanovyh/a/budget");
+    const budgetState = window.history.state;
+    // Real "Back": jsdom's history stack pops to the recipes entry, whose
+    // state (and scroll key) is exactly what attach() wrote earlier.
+    window.history.back();
+    jest.runAllTimers();
+
+    expect(window.history.state).not.toEqual(budgetState);
+    expect(scrollToSpy).toHaveBeenCalledWith(0, 240);
+    scrollToSpy.mockRestore();
+    jest.useRealTimers();
+    detach();
   });
 
   it("attach can be called again after detach without duplicating listeners", () => {

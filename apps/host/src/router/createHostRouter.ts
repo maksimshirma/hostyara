@@ -2,6 +2,7 @@ import { canonicalizeHidSegment } from "./hid";
 import { withGuardSuppressed } from "./historyGuard";
 import { HouseholdLookup } from "./loadHouseholds";
 import { parseRoute, Route } from "./route";
+import { createScrollRestoration } from "./scrollRestoration";
 
 export interface HostRouterLocation {
   pathname: string;
@@ -25,6 +26,8 @@ export interface HostRouter {
 // IA §2: старая ссылка на пространство продолжает работать и сама
 // приводит к новой канонической форме — реализовано как client-side
 // redirect через replaceState, чтобы не плодить лишнюю запись в истории.
+// Rewrites the entry in place, so it carries the existing state (the
+// scroll-restoration key) forward rather than wiping it.
 function redirectToCanonicalIfNeeded(households: HouseholdLookup): void {
   const route = parseRoute(window.location.pathname);
   if (route.kind !== "space") return;
@@ -39,7 +42,7 @@ function redirectToCanonicalIfNeeded(households: HouseholdLookup): void {
   );
   withGuardSuppressed(() =>
     window.history.replaceState(
-      null,
+      window.history.state,
       "",
       `${canonicalPathname}${window.location.search}${window.location.hash}`,
     ),
@@ -48,6 +51,7 @@ function redirectToCanonicalIfNeeded(households: HouseholdLookup): void {
 
 export function createHostRouter(households: HouseholdLookup): HostRouter {
   const listeners = new Set<() => void>();
+  const scroll = createScrollRestoration();
 
   function notify(): void {
     for (const listener of listeners) listener();
@@ -55,6 +59,7 @@ export function createHostRouter(households: HouseholdLookup): HostRouter {
 
   function handlePopState(): void {
     redirectToCanonicalIfNeeded(households);
+    scroll.restoreCurrentPosition();
     notify();
   }
 
@@ -70,11 +75,12 @@ export function createHostRouter(households: HouseholdLookup): HostRouter {
       return parseRoute(window.location.pathname);
     },
     navigate(to, opts = {}) {
+      scroll.saveCurrentPosition();
       withGuardSuppressed(() => {
         if (opts.replace) {
-          window.history.replaceState(null, "", to);
+          window.history.replaceState(scroll.keyForReplacedEntry(), "", to);
         } else {
-          window.history.pushState(null, "", to);
+          window.history.pushState(scroll.keyForNewEntry(), "", to);
         }
       });
       redirectToCanonicalIfNeeded(households);
@@ -85,6 +91,10 @@ export function createHostRouter(households: HouseholdLookup): HostRouter {
       return () => listeners.delete(callback);
     },
     attach() {
+      scroll.disableNativeRestoration();
+      withGuardSuppressed(() =>
+        window.history.replaceState(scroll.ensureCurrentEntryHasKey(), "", window.location.href),
+      );
       redirectToCanonicalIfNeeded(households);
       window.addEventListener("popstate", handlePopState);
       return () => window.removeEventListener("popstate", handlePopState);

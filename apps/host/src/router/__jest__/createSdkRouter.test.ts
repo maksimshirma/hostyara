@@ -1,5 +1,6 @@
 import { HostRouter, HostRouterLocation } from "../createHostRouter";
 import { createSdkRouter } from "../createSdkRouter";
+import { parseRoute } from "../route";
 
 function createFakeHostRouter(
   initial: HostRouterLocation,
@@ -9,7 +10,7 @@ function createFakeHostRouter(
 
   return {
     getLocation: () => location,
-    getRoute: () => ({ kind: "not-found" }),
+    getRoute: () => parseRoute(location.pathname),
     navigate: jest.fn((to: string) => {
       location = { pathname: to, search: "", hash: "" };
       for (const listener of listeners) listener();
@@ -26,6 +27,7 @@ function createFakeHostRouter(
   };
 }
 
+const APP_ID = "recipes";
 const BASENAME = "/h/f3k2xp-semya-ivanovyh/a/recipes";
 
 describe("createSdkRouter", () => {
@@ -35,7 +37,7 @@ describe("createSdkRouter", () => {
       search: "?servings=4",
       hash: "#steps",
     });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
 
     expect(sdkRouter.location).toEqual({
       pathname: "/r/8421",
@@ -46,14 +48,14 @@ describe("createSdkRouter", () => {
 
   it("reports / when the location is exactly the basename", () => {
     const hostRouter = createFakeHostRouter({ pathname: BASENAME, search: "", hash: "" });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
 
     expect(sdkRouter.location.pathname).toBe("/");
   });
 
   it("navigate converts a relative path to an absolute one before delegating to the host router", () => {
     const hostRouter = createFakeHostRouter({ pathname: BASENAME, search: "", hash: "" });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
 
     sdkRouter.navigate("/r/8421");
 
@@ -62,7 +64,7 @@ describe("createSdkRouter", () => {
 
   it("navigate passes the replace option through unchanged", () => {
     const hostRouter = createFakeHostRouter({ pathname: BASENAME, search: "", hash: "" });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
 
     sdkRouter.navigate("/shopping", { replace: true });
 
@@ -75,7 +77,7 @@ describe("createSdkRouter", () => {
       search: "",
       hash: "",
     });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
 
     sdkRouter.navigate("/");
 
@@ -84,7 +86,7 @@ describe("createSdkRouter", () => {
 
   it("link returns an absolute URL for use in a real href", () => {
     const hostRouter = createFakeHostRouter({ pathname: BASENAME, search: "", hash: "" });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
 
     expect(sdkRouter.link("/r/8421")).toBe(`${BASENAME}/r/8421`);
   });
@@ -92,7 +94,7 @@ describe("createSdkRouter", () => {
   it("back() delegates to window.history.back", () => {
     const backSpy = jest.spyOn(window.history, "back").mockImplementation(() => {});
     const hostRouter = createFakeHostRouter({ pathname: BASENAME, search: "", hash: "" });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
 
     sdkRouter.back();
 
@@ -102,7 +104,7 @@ describe("createSdkRouter", () => {
 
   it("subscribe delivers the fresh relative location on every host router change", () => {
     const hostRouter = createFakeHostRouter({ pathname: BASENAME, search: "", hash: "" });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
     const listener = jest.fn();
 
     sdkRouter.subscribe(listener);
@@ -113,7 +115,7 @@ describe("createSdkRouter", () => {
 
   it("unsubscribe stops delivering further changes", () => {
     const hostRouter = createFakeHostRouter({ pathname: BASENAME, search: "", hash: "" });
-    const sdkRouter = createSdkRouter(hostRouter, BASENAME);
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
     const listener = jest.fn();
 
     const unsubscribe = sdkRouter.subscribe(listener);
@@ -121,5 +123,22 @@ describe("createSdkRouter", () => {
     hostRouter.setLocation({ pathname: `${BASENAME}/collections/9`, search: "", hash: "" });
 
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("keeps resolving the correct basename after a hid-only route change (T15)", () => {
+    const hostRouter = createFakeHostRouter({
+      pathname: `${BASENAME}/r/8421`,
+      search: "",
+      hash: "",
+    });
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
+
+    hostRouter.setLocation({
+      pathname: "/h/other-household/a/recipes/r/8421",
+      search: "",
+      hash: "",
+    });
+
+    expect(sdkRouter.location.pathname).toBe("/r/8421");
   });
 });
