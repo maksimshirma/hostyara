@@ -47,6 +47,31 @@ test.describe("cross-app navigation", () => {
     await expect(page.getByRole("heading", { name: "Бюджет" })).toBeVisible();
   });
 
+  test("a series of pushes and an equal run of Backs land exactly back at the start (T19)", async ({
+    page,
+  }) => {
+    const visited: string[] = [];
+    const recordUrl = () => visited.push(new URL(page.url()).pathname);
+
+    await page.goto(HOUSEHOLD);
+    recordUrl();
+    await page.getByRole("link", { name: "Рецепты", exact: true }).click();
+    recordUrl();
+    await page.getByRole("link", { name: "Паста карбонара" }).click();
+    recordUrl();
+    await page.getByRole("link", { name: "Бюджет" }).click();
+    recordUrl();
+    await page.getByRole("link", { name: "Продукты" }).click();
+    recordUrl();
+
+    // visited[0] is the starting point, not a destination a Back should
+    // ever land back on before the loop below returns to it explicitly.
+    for (let i = visited.length - 1; i > 0; i--) {
+      await page.goBack();
+      await expect(page).toHaveURL(new RegExp(`${visited[i - 1]}$`));
+    }
+  });
+
   test("a filter change uses replace and doesn't grow history", async ({ page }) => {
     await page.goto(HOUSEHOLD);
     await page.getByRole("link", { name: "Рецепты", exact: true }).click();

@@ -88,6 +88,19 @@ describe("HostChrome", () => {
     expect(window.location.pathname).toBe("/h/demo-semya-ivanovyh/a/recipes");
   });
 
+  it("shows a not-installed state for a deep link to an unregistered appId, without touching the loader", async () => {
+    window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/does-not-exist");
+    render(<HostChrome />);
+
+    expect(
+      await screen.findByText("Приложение «does-not-exist» не подключено"),
+    ).toBeInTheDocument();
+    expect(loadRemoteMock).not.toHaveBeenCalled();
+    // The dock itself must still render — an unknown appId in the URL is
+    // a slot-level error, not a reason to take down the whole chrome.
+    expect(screen.getByRole("link", { name: "Рецепты" })).toBeInTheDocument();
+  });
+
   it("shows a timeout state in the slot without crashing the chrome", async () => {
     jest.useFakeTimers();
     loadRemoteMock.mockReturnValue(new Promise(() => {}));
