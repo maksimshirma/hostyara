@@ -1,5 +1,6 @@
 import { Button } from "@hostyara/ui";
 import { ThemePreference, useTheme } from "./theme";
+import { HostChrome } from "./chrome/HostChrome";
 import styles from "./App.module.css";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
@@ -27,6 +28,7 @@ export default function App() {
         ))}
       </div>
       <p className={styles.themeStatus}>Active theme: {theme}</p>
+      <HostChrome />
     </div>
   );
 }

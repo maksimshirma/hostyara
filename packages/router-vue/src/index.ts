@@ -1,0 +1,1 @@
+export { createVueRouterHistory } from "./createVueRouterHistory";

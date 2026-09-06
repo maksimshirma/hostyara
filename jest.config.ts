@@ -8,6 +8,7 @@ const config: Config = {
   testPathIgnorePatterns: ["/node_modules/", "/e2e/"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/apps/host/src/$1",
+    "\\.(css|less|scss|sass)\\?url$": "<rootDir>/jest.cssUrlMock.js",
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],

@@ -1,8 +1,12 @@
 export type {
   HostSDK,
-  AuthSDK,
-  NavigationSDK,
-  NotificationsSDK,
-  FeatureFlagsSDK,
-  PermissionsSDK,
+  HostChannel,
+  SdkContext,
+  SdkRouter,
+  SdkNav,
+  SdkApps,
+  SdkShare,
+  Publication,
+  Location,
+  Crumb,
 } from "@hostyara/contracts";

@@ -1,13 +1,9 @@
 import {
   AppManifest,
-  EventBus,
-  EventMap,
-  HostContext,
+  AppModule,
+  HostChannel,
   HostSDK,
-  IframeRemote,
-  MfeModule,
-  ModuleFederationRemote,
-  MountContext,
+  Publication,
   RegistryEntry,
   SharedStateAccessor,
   User,
@@ -16,113 +12,153 @@ import {
 describe("@hostyara/contracts", () => {
   const user: User = { id: "u1", name: "Ada", email: "ada@example.com" };
 
-  let state: Record<string, unknown> = {};
-  const sharedState: SharedStateAccessor<Record<string, unknown>> = {
-    get: () => state,
-    subscribe: () => () => {},
-    set: (patch) => {
-      state = { ...state, ...patch };
+  const sdk: HostSDK = {
+    mode: "household",
+    basename: "/h/f3k2xp/a/recipes",
+    context: { mode: "household", hid: "f3k2xp", user, permissions: ["read"] },
+    router: {
+      location: { pathname: "/", search: "", hash: "" },
+      navigate: () => {},
+      back: () => {},
+      subscribe: () => () => {},
+      link: (to) => `/h/f3k2xp/a/recipes${to}`,
+    },
+    nav: {
+      setBreadcrumbs: () => {},
+      setTitle: () => {},
+    },
+    apps: {
+      open: () => {},
+      canOpen: () => true,
+    },
+    share: {
+      create: async () => ({ url: "https://hostyara.app/s/token", expiresAt: "2026-10-05" }),
+      list: async () => [],
+      revoke: async () => {},
     },
   };
 
-  const sdk: HostSDK = {
-    auth: { getUser: () => user, isAuthenticated: () => true },
-    navigation: { navigate: () => {}, getCurrentRoute: () => "/" },
-    notifications: { show: () => {} },
-    featureFlags: { isEnabled: () => false },
-    permissions: { hasPermission: () => true },
-    sharedState,
-    events: { emit: () => {}, on: () => () => {}, off: () => {} },
-  };
-
-  it("composes a HostSDK from typed capability interfaces", () => {
-    expect(sdk.auth.getUser()).toBe(user);
-    expect(sdk.sharedState.get()).toEqual({});
+  it("composes a HostSDK from mode, context, router, nav, apps and share", () => {
+    expect(sdk.mode).toBe("household");
+    expect(sdk.router.link("/r/1")).toBe("/h/f3k2xp/a/recipes/r/1");
+    expect(sdk.apps.canOpen("budget")).toBe(true);
   });
 
-  it("applies controlled mutations through the shared state accessor", () => {
-    sdk.sharedState.set({ theme: "dark" });
-    expect(sdk.sharedState.get()).toEqual({ theme: "dark" });
+  it("discriminates household and public context by mode", () => {
+    const publicSdk: HostSDK = {
+      ...sdk,
+      mode: "public",
+      context: { mode: "public", type: "recipe", id: "8421" },
+    };
+
+    expect(publicSdk.context.mode).toBe("public");
+    expect(publicSdk.context.mode === "public" && publicSdk.context.id).toBe("8421");
   });
 
-  it("supports both module-federation and iframe remotes in an AppManifest", () => {
-    const mfRemote: ModuleFederationRemote = {
-      kind: "module-federation",
-      remoteEntryUrl: "https://example.com/remoteEntry.js",
-      scope: "example",
-      module: "./App",
+  it("resolves a publication through sdk.share", async () => {
+    const publication: Publication = {
+      token: "9fKq2m",
+      appId: "recipes",
+      type: "recipe",
+      entityId: "8421",
+      authorId: "u_713",
+      createdAt: "2026-09-05T00:00:00Z",
+      expiresAt: "2026-10-05T00:00:00Z",
+      revokedAt: null,
     };
-    const iframeRemote: IframeRemote = {
-      kind: "iframe",
-      entryUrl: "https://example.com/",
-      sandbox: ["allow-scripts"],
+    const shareSdk: HostSDK = {
+      ...sdk,
+      share: { ...sdk.share, list: async () => [publication] },
     };
 
+    await expect(shareSdk.share.list("recipe", "8421")).resolves.toEqual([publication]);
+  });
+
+  it("supports typed emit/subscribe on a shared-state accessor", () => {
+    let state: Record<string, unknown> = {};
+    const sharedState: SharedStateAccessor<Record<string, unknown>> = {
+      get: () => state,
+      subscribe: () => () => {},
+      set: (patch) => {
+        state = { ...state, ...patch };
+      },
+    };
+
+    sharedState.set({ theme: "dark" });
+    expect(sharedState.get()).toEqual({ theme: "dark" });
+  });
+
+  it("describes an AppManifest by the IA/tech taxonomy", () => {
     const manifest: AppManifest = {
-      id: "app1",
-      name: "Example App",
-      namespace: "example",
-      routes: ["/example"],
-      version: "1.0.0",
-      remote: mfRemote,
-      permissions: ["read"],
-      featureFlags: ["new-ui"],
-      status: "healthy",
+      id: "recipes",
+      name: "Рецепты",
+      version: "2.1.0",
+      contract: "1",
+      category: "Кухня",
+      tags: ["еда", "планирование", "покупки"],
+      surfaces: {
+        homeWidgets: ["today-plan", "shopping-preview"],
+        quickActions: ["add-recipe"],
+        search: true,
+        notifications: true,
+      },
+      permissions: ["household.members.read", "storage.own"],
+      entities: [
+        { type: "recipe", route: "/r/:id/:slug" },
+        { type: "collection", route: "/collections/:id" },
+      ],
+      share: { entities: ["recipe", "collection"], route: "/public/:type/:id" },
+      routes: ["/", "/r/:id/*", "/collections/*"],
+      mount: {
+        remoteEntry: "https://cdn.hostyara.app/recipes/remoteEntry.a3f91c.js",
+        exposed: "./app",
+        styles: ["https://cdn.hostyara.app/recipes/app.7d2e10.css"],
+      },
+      network: { connect: ["https://api-recipes.hostyara.app"] },
     };
 
-    expect(manifest.remote.kind).toBe("module-federation");
-    expect(iframeRemote.kind).toBe("iframe");
+    expect(manifest.mount.remoteEntry).toContain("remoteEntry");
+    expect(manifest.share?.entities).toContain("recipe");
 
     const entry: RegistryEntry = { manifest, registeredAt: new Date().toISOString() };
-    expect(entry.manifest.id).toBe("app1");
+    expect(entry.manifest.id).toBe("recipes");
   });
 
-  it("builds a MountContext consumed by an MfeModule lifecycle", async () => {
-    const hostContext: HostContext = { userId: user.id, permissions: ["read"] };
-    const context: MountContext = {
-      container: document.createElement("div"),
-      hostContext,
-      sdk,
-    };
+  it("mounts and unmounts an AppModule with the host element and sdk", async () => {
+    const el = document.createElement("div");
 
-    const mfeModule: MfeModule = {
-      bootstrap: async () => {},
-      mount: async (ctx) => {
-        ctx.container.textContent = "mounted";
+    const appModule: AppModule = {
+      mount: async (container, hostSdk) => {
+        container.textContent = hostSdk.mode;
       },
-      unmount: async () => {},
-      update: async () => {},
-      prefetch: async () => {},
-      destroy: async () => {},
+      unmount: async (container) => {
+        container.textContent = "";
+      },
     };
 
-    await mfeModule.mount(context);
-    expect(context.container.textContent).toBe("mounted");
+    await appModule.mount(el, sdk);
+    expect(el.textContent).toBe("household");
+
+    await appModule.unmount(el);
+    expect(el.textContent).toBe("");
   });
 
-  it("supports typed emit/on/off on an EventBus", () => {
-    interface AppEvents extends EventMap {
-      "app:ready": { id: string };
-    }
-
-    const handlers: Array<(payload: AppEvents["app:ready"]) => void> = [];
-    const bus: EventBus<AppEvents> = {
-      emit: (_event, payload) =>
-        handlers.forEach((handler) => handler(payload as AppEvents["app:ready"])),
-      on: (_event, handler) => {
-        handlers.push(handler as (payload: AppEvents["app:ready"]) => void);
-        return () => {};
+  it("supports typed request/on on a HostChannel", async () => {
+    const handlers = new Map<string, (payload: unknown) => unknown>();
+    const channel: HostChannel = {
+      request: (method: string, payload?: unknown) => {
+        const handler = handlers.get(method);
+        if (!handler) return Promise.reject(new Error(`no handler for "${method}"`));
+        return Promise.resolve(handler(payload));
       },
-      off: (_event, handler) => {
-        const index = handlers.indexOf(handler as (payload: AppEvents["app:ready"]) => void);
-        if (index >= 0) handlers.splice(index, 1);
+      on: (method: string, handler: (payload: unknown) => unknown) => {
+        handlers.set(method, handler);
+        return () => handlers.delete(method);
       },
-    };
+    } as HostChannel;
 
-    const received: string[] = [];
-    bus.on("app:ready", (payload) => received.push(payload.id));
-    bus.emit("app:ready", { id: "app1" });
+    channel.on<{ id: string }, string>("app:ready", (payload) => payload.id);
 
-    expect(received).toEqual(["app1"]);
+    await expect(channel.request("app:ready", { id: "app1" })).resolves.toBe("app1");
   });
 });

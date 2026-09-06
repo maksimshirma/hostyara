@@ -1,0 +1,57 @@
+[
+  {
+    "id": "recipes",
+    "name": "Рецепты",
+    "version": "0.1.0",
+    "contract": "1",
+    "category": "Кухня",
+    "tags": ["еда", "планирование"],
+    "surfaces": { "search": true },
+    "permissions": [],
+    "entities": [{ "type": "recipe", "route": "/r/:id/:slug" }],
+    "routes": ["/", "/r/:id/*"],
+    "mount": {
+      "remoteEntry": "http://localhost:5174/remoteEntry.js",
+      "exposed": "./app",
+      "styles": ["http://localhost:5174/__federation_expose_app.css"]
+    },
+    "network": { "connect": [] }
+  },
+  {
+    "id": "recipes-iframe",
+    "name": "Рецепты (iframe)",
+    "version": "0.1.0",
+    "contract": "1",
+    "category": "Кухня",
+    "tags": ["еда", "планирование"],
+    "surfaces": { "search": true },
+    "permissions": [],
+    "entities": [{ "type": "recipe", "route": "/r/:id/:slug" }],
+    "routes": ["/", "/r/:id/*"],
+    "mount": {
+      "type": "iframe",
+      "remoteEntry": "http://localhost:5174/iframe.html",
+      "exposed": "",
+      "styles": []
+    },
+    "network": { "connect": [] }
+  },
+  {
+    "id": "budget",
+    "name": "Бюджет",
+    "version": "0.1.0",
+    "contract": "1",
+    "category": "Финансы",
+    "tags": ["деньги", "планирование"],
+    "surfaces": { "search": true },
+    "permissions": [],
+    "entities": [{ "type": "transaction", "route": "/tx/:id" }],
+    "routes": ["/", "/tx/*"],
+    "mount": {
+      "remoteEntry": "http://localhost:5175/remoteEntry.js",
+      "exposed": "./app",
+      "styles": ["http://localhost:5175/__federation_expose_app.css"]
+    },
+    "network": { "connect": [] }
+  }
+]

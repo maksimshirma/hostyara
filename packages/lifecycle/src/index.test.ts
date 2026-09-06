@@ -1,33 +1,45 @@
-import { HostSDK, MountContext } from "@hostyara/contracts";
+import { HostSDK } from "@hostyara/contracts";
 import { createLifecycle } from "./index";
 
 describe("@hostyara/lifecycle", () => {
   const sdk: HostSDK = {
-    auth: { getUser: () => null, isAuthenticated: () => false },
-    navigation: { navigate: () => {}, getCurrentRoute: () => "/" },
-    notifications: { show: () => {} },
-    featureFlags: { isEnabled: () => false },
-    permissions: { hasPermission: () => false },
-    sharedState: { get: () => ({}), subscribe: () => () => {}, set: () => {} },
-    events: { emit: () => {}, on: () => () => {}, off: () => {} },
+    mode: "household",
+    basename: "/h/f3k2xp/a/recipes",
+    context: {
+      mode: "household",
+      hid: "f3k2xp",
+      user: { id: "u1", name: "Ada", email: "ada@example.com" },
+      permissions: [],
+    },
+    router: {
+      location: { pathname: "/", search: "", hash: "" },
+      navigate: () => {},
+      back: () => {},
+      subscribe: () => () => {},
+      link: (to) => to,
+    },
+    nav: { setBreadcrumbs: () => {}, setTitle: () => {} },
+    apps: { open: () => {}, canOpen: () => false },
+    share: {
+      create: async () => ({ url: "https://hostyara.app/s/token", expiresAt: "2026-10-05" }),
+      list: async () => [],
+      revoke: async () => {},
+    },
   };
 
-  const context: MountContext = {
-    hostContext: { userId: "u1", permissions: [] },
-    container: document.createElement("div"),
-    sdk,
-  };
+  const el = document.createElement("div");
 
-  it("defaults unimplemented methods to no-ops", async () => {
+  it("defaults unimplemented methods to no-ops", () => {
     const lifecycle = createLifecycle({});
-    await expect(lifecycle.mount(context)).resolves.toBeUndefined();
+    expect(lifecycle.mount(el, sdk)).toBeUndefined();
+    expect(lifecycle.unmount(el)).toBeUndefined();
   });
 
-  it("allows overriding individual lifecycle methods", async () => {
-    const mount = jest.fn(async () => {});
+  it("allows overriding individual lifecycle methods", () => {
+    const mount = jest.fn();
     const lifecycle = createLifecycle({ mount });
 
-    await lifecycle.mount(context);
-    expect(mount).toHaveBeenCalledWith(context);
+    lifecycle.mount(el, sdk);
+    expect(mount).toHaveBeenCalledWith(el, sdk);
   });
 });

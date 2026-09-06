@@ -1,0 +1,266 @@
+import { useEffect, useRef, useState } from "react";
+import { HostSDK } from "@hostyara/contracts";
+import tokensHref from "@hostyara/ui/src/tokens/tokens.css?url";
+import { loadRegistry } from "../registry/loadRegistry";
+import { createRemoteLoader, RemoteLoadError } from "../remote-loader";
+import { createMountManager } from "../mount-manager";
+import {
+  buildAppPath,
+  createHostRouter,
+  createSdkRouter,
+  getLiveBasename,
+  HostRouter,
+  installDevHistoryGuard,
+  loadHouseholds,
+  Route,
+} from "../router";
+import { AppDock } from "./AppDock";
+import { AppSlotStatus } from "./AppSlotStatus";
+import { SpaceSwitcherStub } from "./SpaceSwitcherStub";
+import { installGlobalErrorHandlers } from "./globalErrorHandlers";
+import { SlotErrorReason, SlotStatus } from "./slotStatus";
+import { createObservability, DevOverlay } from "../observability";
+import styles from "./HostChrome.module.css";
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+// The one household in packages/router/households.json — stands in for
+// "the person's last active space" until account/session (out of scope
+// here) picks a real one.
+const DEFAULT_HID = "demo";
+
+// nav/apps/share are still stand-ins (no breadcrumbs, cross-app links, or
+// sharing built yet) — router is the real thing, wired to the host's own
+// router via createSdkRouter.
+//
+// basename/context read from hostRouter live (see createSdkRouter) rather
+// than being captured once here — a household switch (hid change) while
+// this app stays mounted (T15) must update what the app sees without a
+// remount, and a fresh read on every access is what makes that automatic.
+function buildSdk(appId: string, hostRouter: HostRouter): HostSDK {
+  return {
+    mode: "household",
+    get basename() {
+      return getLiveBasename(hostRouter, appId);
+    },
+    get context() {
+      const route = hostRouter.getRoute();
+      return {
+        mode: "household" as const,
+        hid: route.kind === "space" ? route.hid : "",
+        user: { id: "u1", name: "Demo", email: "demo@example.com" },
+        permissions: [],
+      };
+    },
+    router: createSdkRouter(hostRouter, appId),
+    nav: { setBreadcrumbs: () => {}, setTitle: () => {} },
+    apps: { open: () => {}, canOpen: () => false },
+    share: {
+      create: async () => ({ url: "", expiresAt: "" }),
+      list: async () => [],
+      revoke: async () => {},
+    },
+  };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function toSlotErrorReason(error: unknown): SlotErrorReason {
+  if (error instanceof RemoteLoadError && error.kind === "timeout") {
+    return { kind: "timeout" };
+  }
+  return { kind: "load-failed", message: errorMessage(error) };
+}
+
+interface LastAttempt {
+  appId: string;
+}
+
+export function HostChrome() {
+  const slotRef = useRef<HTMLDivElement>(null);
+  const attemptedAppIdRef = useRef<string | null>(null);
+  const attemptedVersionRef = useRef<string | null>(null);
+  const openGenerationRef = useRef(0);
+  const [remoteLoader] = useState(createRemoteLoader);
+  const [mountManager] = useState(() => createMountManager(tokensHref));
+  const [registry] = useState(loadRegistry);
+  const [observability] = useState(() => createObservability());
+  const [router] = useState(() => createHostRouter(loadHouseholds()));
+  const [route, setRoute] = useState<Route>(() => router.getRoute());
+  const [activeAppId, setActiveAppId] = useState<string | null>(null);
+  const [slotStatus, setSlotStatus] = useState<SlotStatus>({ kind: "idle" });
+  const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
+  const apps = registry.list().map((entry) => entry.manifest);
+  const hidSegment = route.kind === "space" ? route.hidSegment : DEFAULT_HID;
+  const activeAppIdRef = useRef(activeAppId);
+  activeAppIdRef.current = activeAppId;
+
+  useEffect(
+    () =>
+      installGlobalErrorHandlers(
+        () => ({ appId: attemptedAppIdRef.current, remoteVersion: attemptedVersionRef.current }),
+        (context, error, source) =>
+          observability.reportError({ ...context, source, message: errorMessage(error) }),
+      ),
+    [observability],
+  );
+
+  useEffect(() => installDevHistoryGuard(() => activeAppIdRef.current), []);
+
+  useEffect(() => {
+    if (router.getRoute().kind === "not-found" && window.location.pathname === "/") {
+      router.navigate(`/h/${DEFAULT_HID}`, { replace: true });
+    }
+    const detach = router.attach();
+    const unsubscribe = router.subscribe(() => setRoute(router.getRoute()));
+    return () => {
+      detach();
+      unsubscribe();
+    };
+  }, [router]);
+
+  // A route change (dock click, popstate, or the deep-link effect below
+  // firing twice under StrictMode) can call openApp again before a prior
+  // call finishes. The generation counter lets a superseded call detect
+  // that and back out instead of racing another mount into the same slot.
+  async function openApp(appId: string) {
+    const generation = ++openGenerationRef.current;
+    attemptedAppIdRef.current = appId;
+    attemptedVersionRef.current = null;
+    setLastAttempt({ appId });
+
+    const resolveStart = performance.now();
+    const resolved = registry.resolve(appId);
+    observability.reportMetric({
+      kind: "resolve",
+      appId,
+      durationMs: performance.now() - resolveStart,
+    });
+    const appName = resolved.ok ? resolved.manifest.name : appId;
+
+    if (!resolved.ok) {
+      const reason: SlotErrorReason =
+        resolved.error.kind === "unknown-app"
+          ? { kind: "not-installed" }
+          : {
+              kind: "incompatible-contract",
+              expectedMajor: resolved.error.expectedMajor,
+              actualMajor: resolved.error.actualMajor,
+            };
+      if (generation === openGenerationRef.current)
+        setSlotStatus({ kind: "error", appName, reason });
+      return;
+    }
+
+    attemptedVersionRef.current = resolved.manifest.version;
+    setSlotStatus({ kind: "loading", appName });
+
+    try {
+      const loadStart = performance.now();
+      const appModule = await remoteLoader.loadRemoteModule(resolved.manifest);
+      observability.reportMetric({
+        kind: "load",
+        appId,
+        durationMs: performance.now() - loadStart,
+      });
+      if (generation !== openGenerationRef.current) return;
+
+      if (slotRef.current) {
+        await mountManager.unmount(slotRef.current);
+        if (generation !== openGenerationRef.current) return;
+        const mountStart = performance.now();
+        await mountManager.mount(
+          slotRef.current,
+          resolved.manifest,
+          appModule,
+          buildSdk(appId, router),
+        );
+        observability.reportMetric({
+          kind: "mount",
+          appId,
+          durationMs: performance.now() - mountStart,
+        });
+        if (generation !== openGenerationRef.current) {
+          await mountManager.unmount(slotRef.current);
+          return;
+        }
+        // Fire-and-forget: an approximate "did it actually paint" signal,
+        // not something the mount flow itself should wait on — nothing
+        // downstream depends on this metric landing before the app is
+        // considered mounted.
+        void nextFrame().then(() => {
+          observability.reportMetric({
+            kind: "first-frame",
+            appId,
+            durationMs: performance.now() - mountStart,
+          });
+        });
+      }
+
+      setActiveAppId(appId);
+      setSlotStatus({ kind: "mounted" });
+    } catch (error) {
+      if (generation === openGenerationRef.current) {
+        setSlotStatus({ kind: "error", appName, reason: toSlotErrorReason(error) });
+      }
+      observability.reportError({
+        appId,
+        remoteVersion: resolved.manifest.version,
+        source: "load-failed",
+        message: errorMessage(error),
+      });
+    }
+  }
+
+  // Direct load of a deep link (cold start) goes through the same path as
+  // a dock click: the route changes, this effect reacts to it. Once an app
+  // is mounted, its own router adapter is already subscribed to sdk.router
+  // directly, so it updates its internal screen on its own — remounting
+  // here on every route change (including a mounted app's own framework
+  // router replacing its initial location) created an actual infinite
+  // mount → navigate → remount loop, caught only by React's "Maximum
+  // update depth exceeded" guard. Only re-open when the target app
+  // actually differs from what's already mounted.
+  useEffect(() => {
+    if (route.kind === "space" && route.area.kind === "app" && route.area.appId !== activeAppId) {
+      void openApp(route.area.appId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route, activeAppId]);
+
+  function selectApp(appId: string): void {
+    router.navigate(buildAppPath(hidSegment, appId));
+  }
+
+  function retry(): void {
+    if (lastAttempt) void openApp(lastAttempt.appId);
+  }
+
+  useEffect(() => {
+    const slot = slotRef.current;
+    return () => {
+      if (slot) void mountManager.unmount(slot);
+    };
+  }, [mountManager]);
+
+  return (
+    <div>
+      <div className={styles.header}>
+        <SpaceSwitcherStub />
+        <AppDock
+          apps={apps}
+          activeAppId={activeAppId}
+          hidSegment={hidSegment}
+          onSelect={selectApp}
+        />
+      </div>
+      <AppSlotStatus status={slotStatus} onRetry={retry} />
+      <div className={styles.slot} ref={slotRef} />
+      <DevOverlay observability={observability} />
+    </div>
+  );
+}

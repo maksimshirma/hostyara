@@ -1,15 +1,11 @@
-import { MfeModule } from "@hostyara/contracts";
+import { AppModule } from "@hostyara/contracts";
 
-const noop = async () => {};
+const noop = () => {};
 
-export function createLifecycle(overrides: Partial<MfeModule>): MfeModule {
+export function createLifecycle(overrides: Partial<AppModule>): AppModule {
   return {
-    bootstrap: noop,
     mount: noop,
     unmount: noop,
-    update: noop,
-    prefetch: noop,
-    destroy: noop,
     ...overrides,
   };
 }

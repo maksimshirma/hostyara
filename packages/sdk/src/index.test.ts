@@ -3,36 +3,32 @@ import { HostSDK } from "./index";
 describe("@hostyara/sdk", () => {
   it("re-exports HostSDK from @hostyara/contracts", () => {
     const sdk: HostSDK = {
-      auth: {
-        getUser: () => null,
-        isAuthenticated: () => false,
-      },
-      navigation: {
+      mode: "public",
+      basename: "/s/token",
+      context: { mode: "public", type: "recipe", id: "8421" },
+      router: {
+        location: { pathname: "/", search: "", hash: "" },
         navigate: () => {},
-        getCurrentRoute: () => "/",
-      },
-      notifications: {
-        show: () => {},
-      },
-      featureFlags: {
-        isEnabled: () => false,
-      },
-      permissions: {
-        hasPermission: () => false,
-      },
-      sharedState: {
-        get: () => ({}),
+        back: () => {},
         subscribe: () => () => {},
-        set: () => {},
+        link: (to) => to,
       },
-      events: {
-        emit: () => {},
-        on: () => () => {},
-        off: () => {},
+      nav: {
+        setBreadcrumbs: () => {},
+        setTitle: () => {},
+      },
+      apps: {
+        open: () => {},
+        canOpen: () => false,
+      },
+      share: {
+        create: async () => ({ url: "https://hostyara.app/s/token", expiresAt: "2026-10-05" }),
+        list: async () => [],
+        revoke: async () => {},
       },
     };
 
-    expect(sdk.auth.isAuthenticated()).toBe(false);
-    expect(sdk.navigation.getCurrentRoute()).toBe("/");
+    expect(sdk.mode).toBe("public");
+    expect(sdk.router.location.pathname).toBe("/");
   });
 });

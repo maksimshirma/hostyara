@@ -1,0 +1,1 @@
+export { createIframeAppModule } from "./createIframeAppModule";

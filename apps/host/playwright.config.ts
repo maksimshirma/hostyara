@@ -1,4 +1,7 @@
+import path from "path";
 import { defineConfig, devices } from "@playwright/test";
+
+const repoRoot = path.resolve(__dirname, "../..");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -19,10 +22,30 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: "yarn dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  // Real cross-app navigation and the iframe transport need actual remotes
+  // running, not just the host's own shell — each dev server started and
+  // awaited independently so a slow remote doesn't fail as "host isn't up".
+  webServer: [
+    {
+      command: "yarn workspace @hostyara/host dev",
+      cwd: repoRoot,
+      url: "http://localhost:3000",
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+    {
+      command: "yarn workspace @hostyara/demo-recipes dev",
+      cwd: repoRoot,
+      url: "http://localhost:5174/remoteEntry.js",
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+    {
+      command: "yarn workspace @hostyara/demo-budget dev",
+      cwd: repoRoot,
+      url: "http://localhost:5175/remoteEntry.js",
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+  ],
 });
