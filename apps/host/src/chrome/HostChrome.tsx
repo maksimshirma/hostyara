@@ -19,7 +19,12 @@ import { AppSlotStatus } from "./AppSlotStatus";
 import { SpaceSwitcherStub } from "./SpaceSwitcherStub";
 import { installGlobalErrorHandlers } from "./globalErrorHandlers";
 import { SlotErrorReason, SlotStatus } from "./slotStatus";
+import { createObservability, DevOverlay } from "../observability";
 import styles from "./HostChrome.module.css";
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
 
 // The one household in packages/router/households.json — stands in for
 // "the person's last active space" until account/session (out of scope
@@ -78,10 +83,12 @@ interface LastAttempt {
 export function HostChrome() {
   const slotRef = useRef<HTMLDivElement>(null);
   const attemptedAppIdRef = useRef<string | null>(null);
+  const attemptedVersionRef = useRef<string | null>(null);
   const openGenerationRef = useRef(0);
   const [remoteLoader] = useState(createRemoteLoader);
   const [mountManager] = useState(() => createMountManager(tokensHref));
   const [registry] = useState(loadRegistry);
+  const [observability] = useState(() => createObservability());
   const [router] = useState(() => createHostRouter(loadHouseholds()));
   const [route, setRoute] = useState<Route>(() => router.getRoute());
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
@@ -92,7 +99,15 @@ export function HostChrome() {
   const activeAppIdRef = useRef(activeAppId);
   activeAppIdRef.current = activeAppId;
 
-  useEffect(() => installGlobalErrorHandlers(() => attemptedAppIdRef.current), []);
+  useEffect(
+    () =>
+      installGlobalErrorHandlers(
+        () => ({ appId: attemptedAppIdRef.current, remoteVersion: attemptedVersionRef.current }),
+        (context, error, source) =>
+          observability.reportError({ ...context, source, message: errorMessage(error) }),
+      ),
+    [observability],
+  );
 
   useEffect(() => installDevHistoryGuard(() => activeAppIdRef.current), []);
 
@@ -115,9 +130,16 @@ export function HostChrome() {
   async function openApp(appId: string) {
     const generation = ++openGenerationRef.current;
     attemptedAppIdRef.current = appId;
+    attemptedVersionRef.current = null;
     setLastAttempt({ appId });
 
+    const resolveStart = performance.now();
     const resolved = registry.resolve(appId);
+    observability.reportMetric({
+      kind: "resolve",
+      appId,
+      durationMs: performance.now() - resolveStart,
+    });
     const appName = resolved.ok ? resolved.manifest.name : appId;
 
     if (!resolved.ok) {
@@ -134,25 +156,49 @@ export function HostChrome() {
       return;
     }
 
+    attemptedVersionRef.current = resolved.manifest.version;
     setSlotStatus({ kind: "loading", appName });
 
     try {
+      const loadStart = performance.now();
       const appModule = await remoteLoader.loadRemoteModule(resolved.manifest);
+      observability.reportMetric({
+        kind: "load",
+        appId,
+        durationMs: performance.now() - loadStart,
+      });
       if (generation !== openGenerationRef.current) return;
 
       if (slotRef.current) {
         await mountManager.unmount(slotRef.current);
         if (generation !== openGenerationRef.current) return;
+        const mountStart = performance.now();
         await mountManager.mount(
           slotRef.current,
           resolved.manifest,
           appModule,
           buildSdk(appId, router),
         );
+        observability.reportMetric({
+          kind: "mount",
+          appId,
+          durationMs: performance.now() - mountStart,
+        });
         if (generation !== openGenerationRef.current) {
           await mountManager.unmount(slotRef.current);
           return;
         }
+        // Fire-and-forget: an approximate "did it actually paint" signal,
+        // not something the mount flow itself should wait on — nothing
+        // downstream depends on this metric landing before the app is
+        // considered mounted.
+        void nextFrame().then(() => {
+          observability.reportMetric({
+            kind: "first-frame",
+            appId,
+            durationMs: performance.now() - mountStart,
+          });
+        });
       }
 
       setActiveAppId(appId);
@@ -161,6 +207,12 @@ export function HostChrome() {
       if (generation === openGenerationRef.current) {
         setSlotStatus({ kind: "error", appName, reason: toSlotErrorReason(error) });
       }
+      observability.reportError({
+        appId,
+        remoteVersion: resolved.manifest.version,
+        source: "load-failed",
+        message: errorMessage(error),
+      });
     }
   }
 
@@ -208,6 +260,7 @@ export function HostChrome() {
       </div>
       <AppSlotStatus status={slotStatus} onRetry={retry} />
       <div className={styles.slot} ref={slotRef} />
+      <DevOverlay observability={observability} />
     </div>
   );
 }

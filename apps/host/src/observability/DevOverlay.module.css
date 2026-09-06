@@ -1,0 +1,41 @@
+.overlay {
+  position: fixed;
+  right: var(--ui-spacing-sm);
+  bottom: var(--ui-spacing-sm);
+  z-index: 9999;
+  max-width: 320px;
+  font-size: var(--ui-font-size-sm);
+  background: var(--ui-color-surface, #fff);
+  border: 1px solid var(--ui-color-border, #ccc);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.toggle {
+  width: 100%;
+  padding: var(--ui-spacing-sm);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--ui-font-size-sm);
+}
+
+.body {
+  padding: 0 var(--ui-spacing-sm) var(--ui-spacing-sm);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.body h4 {
+  margin: var(--ui-spacing-sm) 0 4px;
+}
+
+.body ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.empty {
+  color: var(--ui-color-text-secondary);
+}
