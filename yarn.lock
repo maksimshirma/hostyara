@@ -931,6 +931,14 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@hostyara/conformance@workspace:^, @hostyara/conformance@workspace:packages/conformance":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/conformance@workspace:packages/conformance"
+  dependencies:
+    "@hostyara/contracts": "workspace:^"
+  languageName: unknown
+  linkType: soft
+
 "@hostyara/contracts@workspace:^, @hostyara/contracts@workspace:packages/contracts":
   version: 0.0.0-use.local
   resolution: "@hostyara/contracts@workspace:packages/contracts"
@@ -941,6 +949,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hostyara/demo-budget@workspace:apps/demo-budget"
   dependencies:
+    "@hostyara/conformance": "workspace:^"
     "@hostyara/contracts": "workspace:^"
     "@hostyara/router-vue": "workspace:^"
     "@module-federation/enhanced": "npm:^2.9.0"
@@ -956,6 +965,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hostyara/demo-recipes@workspace:apps/demo-recipes"
   dependencies:
+    "@hostyara/conformance": "workspace:^"
     "@hostyara/contracts": "workspace:^"
     "@hostyara/iframe-embed": "workspace:^"
     "@hostyara/router-react": "workspace:^"
