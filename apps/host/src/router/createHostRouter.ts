@@ -13,7 +13,12 @@ export interface HostRouter {
   getRoute(): Route;
   navigate(to: string, opts?: { replace?: boolean }): void;
   subscribe(callback: () => void): () => void;
-  dispose(): void;
+  // Registers the popstate listener and does the initial canonicalization;
+  // returns the matching detach function. Kept separate from construction
+  // so a React effect can pair setup+teardown symmetrically — StrictMode's
+  // mount→cleanup→mount otherwise fires a bare teardown with no matching
+  // re-setup and permanently drops the listener.
+  attach(): () => void;
 }
 
 // IA §2: старая ссылка на пространство продолжает работать и сама
@@ -50,9 +55,6 @@ export function createHostRouter(households: HouseholdLookup): HostRouter {
     notify();
   }
 
-  redirectToCanonicalIfNeeded(households);
-  window.addEventListener("popstate", handlePopState);
-
   return {
     getLocation() {
       return {
@@ -77,9 +79,10 @@ export function createHostRouter(households: HouseholdLookup): HostRouter {
       listeners.add(callback);
       return () => listeners.delete(callback);
     },
-    dispose() {
-      window.removeEventListener("popstate", handlePopState);
-      listeners.clear();
+    attach() {
+      redirectToCanonicalIfNeeded(households);
+      window.addEventListener("popstate", handlePopState);
+      return () => window.removeEventListener("popstate", handlePopState);
     },
   };
 }

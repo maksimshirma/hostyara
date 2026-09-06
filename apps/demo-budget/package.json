@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@hostyara/contracts": "workspace:^",
-    "vue": "^3.5.42"
+    "@hostyara/router-vue": "workspace:^",
+    "vue": "^3.5.42",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@module-federation/enhanced": "^2.9.0",

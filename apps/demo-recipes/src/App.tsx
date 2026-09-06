@@ -1,12 +1,12 @@
-import styles from "./App.module.css";
+import { Route, Routes } from "react-router-dom";
+import { RecipeDetailScreen } from "./screens/RecipeDetailScreen";
+import { RecipeListScreen } from "./screens/RecipeListScreen";
 
 export function App() {
   return (
-    <div className={styles.card}>
-      <h2 className={styles.title}>Рецепты</h2>
-      <p className={styles.text}>
-        Демо-приложение на React, загруженное как удалённый модуль Module Federation.
-      </p>
-    </div>
+    <Routes>
+      <Route path="/" element={<RecipeListScreen />} />
+      <Route path="/r/:id" element={<RecipeDetailScreen />} />
+    </Routes>
   );
 }

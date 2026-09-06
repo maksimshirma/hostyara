@@ -18,7 +18,7 @@ function createFakeHostRouter(
       listeners.add(callback);
       return () => listeners.delete(callback);
     }),
-    dispose: jest.fn(),
+    attach: jest.fn(() => () => {}),
     setLocation(loc) {
       location = loc;
       for (const listener of listeners) listener();

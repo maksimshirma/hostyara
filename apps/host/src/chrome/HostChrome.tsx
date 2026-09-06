@@ -86,7 +86,12 @@ export function HostChrome() {
     if (router.getRoute().kind === "not-found" && window.location.pathname === "/") {
       router.navigate(`/h/${DEFAULT_HID}`, { replace: true });
     }
-    return router.subscribe(() => setRoute(router.getRoute()));
+    const detach = router.attach();
+    const unsubscribe = router.subscribe(() => setRoute(router.getRoute()));
+    return () => {
+      detach();
+      unsubscribe();
+    };
   }, [router]);
 
   // A route change (dock click, popstate, or the deep-link effect below
@@ -146,13 +151,20 @@ export function HostChrome() {
   }
 
   // Direct load of a deep link (cold start) goes through the same path as
-  // a dock click: the route changes, this effect reacts to it.
+  // a dock click: the route changes, this effect reacts to it. Once an app
+  // is mounted, its own router adapter is already subscribed to sdk.router
+  // directly, so it updates its internal screen on its own — remounting
+  // here on every route change (including a mounted app's own framework
+  // router replacing its initial location) created an actual infinite
+  // mount → navigate → remount loop, caught only by React's "Maximum
+  // update depth exceeded" guard. Only re-open when the target app
+  // actually differs from what's already mounted.
   useEffect(() => {
-    if (route.kind === "space" && route.area.kind === "app") {
+    if (route.kind === "space" && route.area.kind === "app" && route.area.appId !== activeAppId) {
       void openApp(route.hid, route.area.appId, route.area.basename);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route]);
+  }, [route, activeAppId]);
 
   function selectApp(appId: string): void {
     router.navigate(buildAppPath(hidSegment, appId));
@@ -168,8 +180,6 @@ export function HostChrome() {
       if (slot) void mountManager.unmount(slot);
     };
   }, [mountManager]);
-
-  useEffect(() => router.dispose, [router]);
 
   return (
     <div>

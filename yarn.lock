@@ -942,11 +942,13 @@ __metadata:
   resolution: "@hostyara/demo-budget@workspace:apps/demo-budget"
   dependencies:
     "@hostyara/contracts": "workspace:^"
+    "@hostyara/router-vue": "workspace:^"
     "@module-federation/enhanced": "npm:^2.9.0"
     "@rspack/cli": "npm:^2.2.2"
     "@rspack/core": "npm:^2.2.2"
     "@rspack/dev-server": "npm:^2.2.1"
     vue: "npm:^3.5.42"
+    vue-router: "npm:^4.6.4"
   languageName: unknown
   linkType: soft
 
@@ -955,6 +957,7 @@ __metadata:
   resolution: "@hostyara/demo-recipes@workspace:apps/demo-recipes"
   dependencies:
     "@hostyara/contracts": "workspace:^"
+    "@hostyara/router-react": "workspace:^"
     "@module-federation/enhanced": "npm:^2.9.0"
     "@rspack/cli": "npm:^2.2.2"
     "@rspack/core": "npm:^2.2.2"
@@ -962,6 +965,7 @@ __metadata:
     css-loader: "npm:^7.1.5"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
+    react-router-dom: "npm:^7.18.3"
   languageName: unknown
   linkType: soft
 
@@ -1005,7 +1009,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@hostyara/router-react@workspace:packages/router-react":
+"@hostyara/router-react@workspace:^, @hostyara/router-react@workspace:packages/router-react":
   version: 0.0.0-use.local
   resolution: "@hostyara/router-react@workspace:packages/router-react"
   dependencies:
@@ -1016,7 +1020,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@hostyara/router-vue@workspace:packages/router-vue":
+"@hostyara/router-vue@workspace:^, @hostyara/router-vue@workspace:packages/router-vue":
   version: 0.0.0-use.local
   resolution: "@hostyara/router-vue@workspace:packages/router-vue"
   dependencies:
