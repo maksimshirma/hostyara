@@ -21,13 +21,21 @@ A React + TypeScript Yarn Workspaces monorepo for the family super-app host/shel
    yarn install
    ```
 
-3. **Start development server**:
+3. **Start development servers** (host + both demo remotes, in parallel):
 
    ```bash
    yarn dev
    ```
 
-   App runs at `http://localhost:3000`
+   This runs `yarn workspace @hostyara/host dev`, `yarn workspace @hostyara/demo-recipes dev`, and `yarn workspace @hostyara/demo-budget dev` together via `concurrently`:
+
+   | App                            | URL                     |
+   | ------------------------------ | ----------------------- |
+   | `@hostyara/host` (shell)       | `http://localhost:3000` |
+   | `@hostyara/demo-recipes` (MFE) | `http://localhost:5174` |
+   | `@hostyara/demo-budget` (MFE)  | `http://localhost:5175` |
+
+   The host loads both remotes over Module Federation from `apps/host/src/registry/registry.json`, which points at their dev-server `remoteEntry.js` URLs — all three servers need to be running for the shell to actually mount an app. To run just one piece on its own: `yarn workspace @hostyara/host dev`, `yarn workspace @hostyara/demo-recipes dev`, or `yarn workspace @hostyara/demo-budget dev`.
 
 All commands below run from the repo root and operate on the whole workspace unless noted. To target a single package directly: `yarn workspace @hostyara/<name> <script>` (e.g. `yarn workspace @hostyara/host dev`).
 
@@ -35,26 +43,32 @@ All commands below run from the repo root and operate on the whole workspace unl
 
 ### Development
 
-| Command        | Description                      |
-| -------------- | -------------------------------- |
-| `yarn dev`     | Start Vite dev server with HMR   |
-| `yarn preview` | Preview production build locally |
+| Command        | Description                                                             |
+| -------------- | ----------------------------------------------------------------------- |
+| `yarn dev`     | Start host (Vite, HMR) + demo-recipes and demo-budget (Rspack) together |
+| `yarn preview` | Preview the host's production build locally                             |
 
 ### Building & Production
 
-| Command          | Description                                        |
-| ---------------- | -------------------------------------------------- |
-| `yarn build`     | TypeScript check + Vite build to `apps/host/dist/` |
-| `yarn typecheck` | Run TypeScript type checking (non-emit)            |
+`yarn build` only builds the host shell — the two demo remotes are separate Rspack projects and build independently:
+
+| Command                                       | Description                                                    |
+| --------------------------------------------- | -------------------------------------------------------------- |
+| `yarn build`                                  | TypeScript check + Vite build of the host to `apps/host/dist/` |
+| `yarn workspace @hostyara/demo-recipes build` | Rspack production build to `apps/demo-recipes/dist/`           |
+| `yarn workspace @hostyara/demo-budget build`  | Rspack production build to `apps/demo-budget/dist/`            |
+| `yarn typecheck`                              | Run TypeScript type checking across the workspace (non-emit)   |
+
+For a full production build, run all three and deploy each `dist/` to its own static host/CDN — the host's `registry.json` needs the remotes' deployed `remoteEntry.js` URLs (and, for `demo-recipes`, its `iframe.html` if using the iframe transport) updated to match wherever they end up, since dev points them at `localhost:5174`/`localhost:5175`.
 
 ### Testing
 
-| Command           | Description                                  |
-| ----------------- | -------------------------------------------- |
-| `yarn test`       | Run Jest unit tests                          |
-| `yarn test:watch` | Jest in watch mode                           |
-| `yarn e2e`        | Run Playwright E2E tests (starts dev server) |
-| `yarn e2e:ui`     | Run E2E tests with Playwright UI             |
+| Command           | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `yarn test`       | Run Jest unit tests                                   |
+| `yarn test:watch` | Jest in watch mode                                    |
+| `yarn e2e`        | Run Playwright E2E tests (starts host + both remotes) |
+| `yarn e2e:ui`     | Run E2E tests with Playwright UI                      |
 
 ### Code Quality
 
