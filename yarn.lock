@@ -967,6 +967,7 @@ __metadata:
   dependencies:
     "@hostyara/conformance": "workspace:^"
     "@hostyara/contracts": "workspace:^"
+    "@hostyara/dev-harness": "workspace:^"
     "@hostyara/iframe-embed": "workspace:^"
     "@hostyara/router-react": "workspace:^"
     "@module-federation/enhanced": "npm:^2.9.0"
@@ -977,6 +978,14 @@ __metadata:
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
     react-router-dom: "npm:^7.18.3"
+  languageName: unknown
+  linkType: soft
+
+"@hostyara/dev-harness@workspace:^, @hostyara/dev-harness@workspace:packages/dev-harness":
+  version: 0.0.0-use.local
+  resolution: "@hostyara/dev-harness@workspace:packages/dev-harness"
+  dependencies:
+    "@hostyara/contracts": "workspace:^"
   languageName: unknown
   linkType: soft
 

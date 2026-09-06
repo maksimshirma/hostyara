@@ -5,10 +5,13 @@ const isProduction = process.env.NODE_ENV === "production";
 
 export default {
   mode: isProduction ? "production" : "development",
-  // iframeEmbed (T17): the iframe transport's static entry, alongside the
-  // Module Federation container below — same appModule (src/index.tsx),
-  // a different bootstrap for a different transport (src/iframe-entry.ts).
-  entry: { iframeEmbed: "./src/iframe-entry.ts" },
+  // iframeEmbed (T17) and devHarness (T21): static entries alongside the
+  // Module Federation container below, all three booting the exact same
+  // appModule (src/index.tsx) through a different bootstrap.
+  entry: {
+    iframeEmbed: "./src/iframe-entry.ts",
+    devHarness: "./src/dev-harness-entry.ts",
+  },
   output: {
     publicPath: "http://localhost:5174/",
     uniqueName: "recipes",
@@ -58,6 +61,13 @@ export default {
       filename: "iframe.html",
       chunks: ["iframeEmbed"],
       templateContent: '<!DOCTYPE html><html><body><div id="root"></div></body></html>',
+    }),
+    // No #root needed here — runDevHarness creates its own host element
+    // and shadow root, exactly like the real mount manager does.
+    new rspack.HtmlRspackPlugin({
+      filename: "standalone.html",
+      chunks: ["devHarness"],
+      templateContent: "<!DOCTYPE html><html><body></body></html>",
     }),
   ],
 };

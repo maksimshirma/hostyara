@@ -1,6 +1,23 @@
 import { loadRegistry } from "../loadRegistry";
 
 describe("loadRegistry", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("applies a ?_remote= override (T21) to the matching manifest's remoteEntry", () => {
+    window.history.replaceState(null, "", "/?_remote=recipes@http://localhost:9999/remoteEntry.js");
+
+    const registry = loadRegistry();
+
+    expect(registry.get("recipes")?.manifest.mount.remoteEntry).toBe(
+      "http://localhost:9999/remoteEntry.js",
+    );
+    expect(registry.get("budget")?.manifest.mount.remoteEntry).not.toBe(
+      "http://localhost:9999/remoteEntry.js",
+    );
+  });
+
   it("registers every manifest from registry.json", () => {
     const registry = loadRegistry();
 
