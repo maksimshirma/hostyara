@@ -1,4 +1,32 @@
-import { HostChannel, HostSDK } from "@hostyara/contracts";
+import {
+  HostChannel,
+  HostSDK,
+  IframeApiResult,
+  isSdkApiError,
+  SdkApiRequestInit,
+} from "@hostyara/contracts";
+
+interface ApiRequestPayload {
+  service: string;
+  path: string;
+  init?: SdkApiRequestInit;
+}
+
+async function answerApiRequest(
+  sdk: HostSDK,
+  payload: ApiRequestPayload,
+): Promise<IframeApiResult> {
+  try {
+    return { ok: true, value: await sdk.api.request(payload.service, payload.path, payload.init) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: isSdkApiError(error)
+        ? error
+        : { name: "SdkApiError", code: "network_error", status: 0 },
+    };
+  }
+}
 
 // Registers the host side of every request the embed-side proxy sdk can
 // make (createIframeAppModule wires the transport; this wires what it
@@ -32,6 +60,14 @@ export function bridgeChannelToSdk(channel: HostChannel, sdk: HostSDK): Array<()
     ),
     channel.on<{ token: string }, void>("share.revoke", (payload) =>
       sdk.share.revoke(payload.token),
+    ),
+    // The host's own sdk.api already pins the app's id and household — the
+    // iframe cannot reach another app's backend through this either.
+    channel.on<ApiRequestPayload, IframeApiResult>("api.request", (payload) =>
+      answerApiRequest(sdk, payload),
+    ),
+    channel.on<{ level: "view" | "edit" }, void>("access.requestAccess", (payload) =>
+      sdk.access.requestAccess(payload.level),
     ),
   ];
 }

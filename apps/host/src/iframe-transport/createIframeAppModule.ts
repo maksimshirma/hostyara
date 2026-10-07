@@ -1,6 +1,8 @@
 import {
   AppManifest,
   AppModule,
+  HostSDK,
+  IframeAccessSnapshot,
   IframeAckMessage,
   isIframeReadyMessage,
 } from "@hostyara/contracts";
@@ -37,6 +39,13 @@ function waitForReady(iframe: HTMLIFrameElement, expectedOrigin: string): Promis
 
     window.addEventListener("message", onMessage);
   });
+}
+
+function snapshotAccess(sdk: HostSDK, manifest: AppManifest): IframeAccessSnapshot {
+  return {
+    level: sdk.access.level,
+    permissions: manifest.permissions.filter((permission) => sdk.access.can(permission)),
+  };
 }
 
 export function createIframeAppModule(manifest: AppManifest): AppModule {
@@ -81,12 +90,21 @@ export function createIframeAppModule(manifest: AppManifest): AppModule {
         }),
       );
 
+      // sdk.access is live on the host side; the embed's synchronous copy
+      // is refreshed on every change.
+      unbindHandlers.push(
+        sdk.access.subscribe(() => {
+          void channel.request("access.changed", snapshotAccess(sdk, manifest));
+        }),
+      );
+
       const ack: IframeAckMessage = {
         type: "hostyara:iframe-ack",
         mode: sdk.mode,
         basename: sdk.basename,
         context: sdk.context,
         location: sdk.router.location,
+        access: snapshotAccess(sdk, manifest),
       };
       iframe.contentWindow?.postMessage(ack, expectedOrigin, [port2]);
     },

@@ -2,6 +2,7 @@ import { createRoot, Root } from "react-dom/client";
 import { AppModule } from "@hostyara/contracts";
 import { SdkHistoryRouter } from "@hostyara/router-react";
 import { App } from "./App";
+import { SdkProvider } from "./sdkContext";
 
 const roots = new WeakMap<HTMLElement, Root>();
 
@@ -9,9 +10,11 @@ const appModule: AppModule = {
   mount(el, sdk) {
     const root = createRoot(el);
     root.render(
-      <SdkHistoryRouter sdk={sdk}>
-        <App />
-      </SdkHistoryRouter>,
+      <SdkProvider sdk={sdk}>
+        <SdkHistoryRouter sdk={sdk}>
+          <App />
+        </SdkHistoryRouter>
+      </SdkProvider>,
     );
     roots.set(el, root);
   },

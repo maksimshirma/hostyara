@@ -13,3 +13,11 @@
 .slot {
   padding: var(--ui-spacing-sm);
 }
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-spacing-sm);
+  color: var(--ui-color-text-secondary);
+  font-size: var(--ui-font-size-sm);
+}

@@ -1,5 +1,5 @@
 import { createHostRouter } from "../createHostRouter";
-import { HouseholdLookup } from "../loadHouseholds";
+import { HouseholdLookup } from "../householdLookup";
 
 const households: HouseholdLookup = {
   resolve: (hid) => (hid === "f3k2xp" ? { hid: "f3k2xp", name: "Семья Ивановых" } : undefined),

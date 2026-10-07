@@ -1,0 +1,33 @@
+.screen {
+  max-width: 360px;
+  margin: var(--ui-spacing-xl) auto;
+  text-align: left;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-spacing-sm);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-spacing-3xs);
+  color: var(--ui-color-text);
+  font-size: var(--ui-font-size-sm);
+}
+
+.error {
+  color: var(--ui-color-danger, #c62828);
+  font-size: var(--ui-font-size-sm);
+}
+
+.switch {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ui-color-text-secondary);
+  text-decoration: underline;
+  cursor: pointer;
+}

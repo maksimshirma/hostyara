@@ -13,8 +13,10 @@ walkthrough of what the platform actually does end to end.
 
 ## Prerequisites
 
-- **Node.js** 20+
+- **Node.js** 22.12+ (the BFF loads ESM-only dependencies through `require`)
 - **Corepack** enabled (built-in with Node.js)
+- **Docker** — Postgres for the BFF (`apps/bff/docker-compose.yml`)
+- **identity-service** checked out next to this repo (`../identity-service`) — the shell has no login without it
 
 ## Setup
 
@@ -30,19 +32,37 @@ walkthrough of what the platform actually does end to end.
    yarn install
    ```
 
-3. **Start development servers** (host + both demo remotes, in parallel):
+3. **Start identity-service and the BFF's database** (once per machine — see each README):
+
+   ```bash
+   # in ../identity-service: its own Postgres, migrations, then
+   PORT=3001 TRUSTED_ORIGINS=http://localhost:3000 \
+     BFF_WEBHOOK_URL=http://localhost:4001/webhooks/access-changed pnpm dev
+
+   # here:
+   cd apps/bff && cp .env.example .env && docker compose up -d && yarn db:migrate && cd ../..
+   ```
+
+4. **Start development servers** (host, BFF and both demo remotes, in parallel):
 
    ```bash
    yarn dev
    ```
 
-   This runs `yarn workspace @hostyara/host dev`, `yarn workspace @hostyara/demo-recipes dev`, and `yarn workspace @hostyara/demo-budget dev` together via `concurrently`:
+   This runs the host, `@hostyara/bff`, `@hostyara/demo-recipes` and `@hostyara/demo-budget` together via `concurrently`:
 
-   | App                            | URL                     |
-   | ------------------------------ | ----------------------- |
-   | `@hostyara/host` (shell)       | `http://localhost:3000` |
-   | `@hostyara/demo-recipes` (MFE) | `http://localhost:5174` |
-   | `@hostyara/demo-budget` (MFE)  | `http://localhost:5175` |
+   | App                            | URL                                                    |
+   | ------------------------------ | ------------------------------------------------------ |
+   | `@hostyara/host` (shell)       | `http://localhost:3000`                                |
+   | `@hostyara/bff`                | `http://localhost:4000` (proxied under :3000), `:4001` |
+   | `@hostyara/demo-recipes` (MFE) | `http://localhost:5174`                                |
+   | `@hostyara/demo-budget` (MFE)  | `http://localhost:5175`                                |
+
+   Open `http://localhost:3000`, register, and create a household. The host's
+   Vite server forwards `/auth`, `/identity` and `/api` to the BFF, so the
+   browser only ever talks to `:3000`. Apps open once they are installed in the
+   household and you hold a grant (see `apps/bff/README.md` for registering app
+   backends).
 
    The host loads both remotes over Module Federation from `apps/host/src/registry/registry.json`, which points at their dev-server `remoteEntry.js` URLs — all three servers need to be running for the shell to actually mount an app. To run just one piece on its own: `yarn workspace @hostyara/host dev`, `yarn workspace @hostyara/demo-recipes dev`, or `yarn workspace @hostyara/demo-budget dev`.
 
@@ -52,10 +72,10 @@ All commands below run from the repo root and operate on the whole workspace unl
 
 ### Development
 
-| Command        | Description                                                             |
-| -------------- | ----------------------------------------------------------------------- |
-| `yarn dev`     | Start host (Vite, HMR) + demo-recipes and demo-budget (Rspack) together |
-| `yarn preview` | Preview the host's production build locally                             |
+| Command        | Description                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| `yarn dev`     | Start host (Vite, HMR) + BFF (tsx watch) + demo-recipes and demo-budget (Rspack) together |
+| `yarn preview` | Preview the host's production build locally                                               |
 
 ### Building & Production
 
@@ -72,12 +92,14 @@ For a full production build, run all three and deploy each `dist/` to its own st
 
 ### Testing
 
-| Command           | Description                                           |
-| ----------------- | ----------------------------------------------------- |
-| `yarn test`       | Run Jest unit tests                                   |
-| `yarn test:watch` | Jest in watch mode                                    |
-| `yarn e2e`        | Run Playwright E2E tests (starts host + both remotes) |
-| `yarn e2e:ui`     | Run E2E tests with Playwright UI                      |
+| Command                 | Description                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `yarn test`             | Run Jest unit tests                                                                                                      |
+| `yarn test:watch`       | Jest in watch mode                                                                                                       |
+| `yarn test:integration` | BFF integration tests against its Postgres (`apps/bff`)                                                                  |
+| `yarn e2e`              | Run Playwright E2E tests (starts host + both remotes; the BFF is stubbed)                                                |
+| `yarn e2e:ui`           | Run E2E tests with Playwright UI                                                                                         |
+| `yarn e2e:full`         | Full-stack Playwright run: host + BFF + identity-service + JWT-verifying app backends (local; see `apps/host/README.md`) |
 
 ### Code Quality
 
@@ -187,7 +209,8 @@ is just a map of where to look.
 | `@hostyara/iframe-embed` | `HostSDK` proxy + handshake for apps mounted via the iframe transport instead of Module Federation                       |
 | `@hostyara/router-react` | Adapts `sdk.router` to React Router's `history` interface                                                                |
 | `@hostyara/router-vue`   | Adapts `sdk.router` to Vue Router's `history` interface                                                                  |
-| `@hostyara/host`         | The shell app: routing, mount manager, remote loader, CSP generation, observability                                      |
+| `@hostyara/host`         | The shell app: session, routing, mount manager, remote loader, CSP generation, observability                             |
+| `@hostyara/bff`          | Backend-for-frontend: server-side sessions, identity-service proxy, gateway to app backends, live access events          |
 | `@hostyara/demo-recipes` | React remote demonstrating all three transports (Module Federation, iframe, standalone)                                  |
 | `@hostyara/demo-budget`  | Vue remote demonstrating Module Federation (no iframe/standalone entry yet)                                              |
 
@@ -219,7 +242,7 @@ npx playwright install --with-deps chromium
 ### Port already in use
 
 Ports are hardcoded, not read from an environment variable: `3000` for the
-host (`apps/host/vite.config.ts`'s `server.port`), `5174` for demo-recipes
+host (identity-service therefore runs on `3001`; the BFF uses `4000`/`4001`) (`apps/host/vite.config.ts`'s `server.port`), `5174` for demo-recipes
 and `5175` for demo-budget (each app's own `rspack.config.mjs`'s
 `devServer.port`). If one is in use, edit the relevant config file directly
 — `PORT=... yarn dev` has no effect.

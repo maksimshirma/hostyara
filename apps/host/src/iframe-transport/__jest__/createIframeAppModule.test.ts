@@ -219,6 +219,100 @@ describe("createIframeAppModule", () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
+  async function mountEmbedded(sdk: ReturnType<typeof fakeSdk>, manifest = fakeManifest()) {
+    const el = createAttachedTestSlot();
+    const appModule = createIframeAppModule(manifest);
+    const mountPromise = appModule.mount(el, sdk);
+    const iframe = el.querySelector("iframe")!;
+    const postMessageSpy = jest
+      .spyOn(iframe.contentWindow!, "postMessage")
+      .mockImplementation(() => {});
+    dispatchReady(iframe, "1.0.0");
+    await mountPromise;
+    const [ack, , transfer] = postMessageSpy.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+      string,
+      MessagePort[],
+    ];
+    const embedPort = transfer[0];
+    embedPort.start();
+    const nextMessage = () =>
+      new Promise<Record<string, unknown>>((resolve) => {
+        embedPort.addEventListener(
+          "message",
+          (event) => resolve((event as MessageEvent).data as Record<string, unknown>),
+          { once: true },
+        );
+      });
+    const close = async () => {
+      embedPort.close();
+      await appModule.unmount(el);
+    };
+    return { ack, embedPort, nextMessage, close };
+  }
+
+  it("sends the app's current access with the ack", async () => {
+    const sdk = fakeSdk();
+    sdk.access.can = jest.fn((action: string) => action === "storage.own");
+    const { ack, close } = await mountEmbedded(
+      sdk,
+      fakeManifest({ permissions: ["storage.own", "notifications.send"] }),
+    );
+
+    expect(ack.access).toEqual({ level: "edit", permissions: ["storage.own"] });
+    await close();
+  });
+
+  it("pushes access changes down to the embed", async () => {
+    const sdk = fakeSdk();
+    const { nextMessage, close } = await mountEmbedded(sdk);
+    const pushed = nextMessage();
+
+    const onAccessChange = (sdk.access.subscribe as jest.Mock).mock.calls[0][0] as () => void;
+    onAccessChange();
+
+    expect(await pushed).toMatchObject({
+      method: "access.changed",
+      payload: { level: "edit", permissions: [] },
+    });
+    await close();
+  });
+
+  it.each([
+    ["a result", () => Promise.resolve({ items: [] }), { ok: true, value: { items: [] } }],
+    [
+      "an SdkApiError, intact",
+      () => Promise.reject({ name: "SdkApiError", code: "no_grant", status: 403 }),
+      { ok: false, error: { name: "SdkApiError", code: "no_grant", status: 403 } },
+    ],
+    [
+      "any other failure as network_error",
+      () => Promise.reject(new Error("boom")),
+      { ok: false, error: { name: "SdkApiError", code: "network_error", status: 0 } },
+    ],
+  ])("answers api.request with %s", async (_label, outcome, expected) => {
+    const sdk = fakeSdk();
+    (sdk.api.request as jest.Mock).mockImplementation(outcome);
+    const { embedPort, nextMessage, close } = await mountEmbedded(sdk);
+    const response = nextMessage();
+
+    embedPort.postMessage({
+      kind: "request",
+      id: "api-1",
+      method: "api.request",
+      payload: { service: "widget", path: "/items", init: { query: { q: "a" } } },
+    });
+
+    expect(await response).toMatchObject({
+      kind: "response",
+      id: "api-1",
+      ok: true,
+      result: expected,
+    });
+    expect(sdk.api.request).toHaveBeenCalledWith("widget", "/items", { query: { q: "a" } });
+    await close();
+  });
+
   it("removes the iframe and stops bridging on unmount", async () => {
     const el = createAttachedTestSlot();
     const sdk = fakeSdk();

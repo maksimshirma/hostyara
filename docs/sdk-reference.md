@@ -13,6 +13,8 @@ export interface HostSDK {
   nav: SdkNav;
   apps: SdkApps;
   share: SdkShare;
+  api: SdkApi;
+  access: SdkAccess;
 }
 ```
 
@@ -35,6 +37,9 @@ instead of reading it live, it will miss household switches. Re-read it, or
 subscribe via `sdk.router.subscribe` (household switches ride the same
 notification channel as location changes — there's no separate
 "context changed" event).
+
+`context.permissions` is deprecated: it is a snapshot taken at mount. Use
+`sdk.access.can()` (below), which stays current when rights change.
 
 ## `basename`
 
@@ -127,6 +132,75 @@ For creating shareable links to entities your app owns. Also currently
 stubbed in the real host (returns empty results, never throws) — the shape
 is stable to build against, the behavior isn't implemented yet.
 
+## `api`
+
+```ts
+export interface SdkApi {
+  request<T = unknown>(service: string, path: string, init?: SdkApiRequestInit): Promise<T>;
+}
+
+export interface SdkApiRequestInit {
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  query?: Record<string, string>;
+  headers?: Record<string, string>;
+  body?: unknown; // sent as JSON
+}
+```
+
+The only way your app reaches its own backend. Never call `fetch` against a
+backend directly: the host sends the request through the platform's BFF
+with the user's session, and your backend receives a short-lived token
+scoped to your app. Your app never sees a token or a cookie.
+
+- `service` must be your own app id; any other value is rejected.
+- `path` is relative to your backend's base URL (`"/items/42"`).
+- Resolves with the parsed JSON body (text for non-JSON responses,
+  `undefined` for 204).
+- Rejects with an `SdkApiError` — a plain object, check it with
+  `isSdkApiError(e)`:
+
+```ts
+import { isSdkApiError } from "@hostyara/sdk";
+
+try {
+  const items = await sdk.api.request<Item[]>("recipes", "/items", { query: { q: "soup" } });
+} catch (e) {
+  if (isSdkApiError(e) && e.code === "http_error" && e.status === 404) {
+    // your backend's own 404; its body is in e.body
+  }
+}
+```
+
+| `code`                                                      | Meaning                                                      |
+| ----------------------------------------------------------- | ------------------------------------------------------------ |
+| `http_error`                                                | your backend answered non-2xx (`status`, `body` are its own) |
+| `no_grant`, `not_installed`, `forbidden`                    | the user lost access; the shell shows the matching screen    |
+| `unauthenticated`                                           | the session ended; the shell shows the login screen          |
+| `bad_request`, `payload_too_large`                          | refused by the platform before reaching your backend         |
+| `upstream_unavailable`, `upstream_timeout`, `network_error` | your backend or the platform is unreachable                  |
+
+## `access`
+
+```ts
+export interface SdkAccess {
+  readonly level: "view" | "edit";
+  can(action: "edit" | Permission): boolean;
+  subscribe(callback: () => void): () => void;
+  requestAccess(level: "view" | "edit"): Promise<void>;
+}
+```
+
+The user's access to your app in the current household. `level` is always
+`"view"` in public mode. `can("edit")` checks the grant level; any other
+string checks one of your app's confirmed manifest permissions. Read these
+when you render instead of caching them, and re-render from `subscribe` —
+rights can change while your app is open (a grant revoked, a role changed),
+and the host learns about it immediately. `requestAccess` opens the shell's
+own "request access" dialog.
+
+This only drives your UI: your backend still enforces `view` vs `edit` from
+the token's `scope`.
+
 ## What's not part of `HostSDK`
 
 A few things you might expect aren't here, on purpose:
@@ -137,6 +211,7 @@ A few things you might expect aren't here, on purpose:
   real contract. In the real host, your styles come from
   `manifest.mount.styles` (see [manifest.md](./manifest.md)), and the
   mount manager injects them into your shadow root for you.
+- **No `getToken()`.** Tokens never reach app code (MF or iframe); use `api`.
 - **No `auth`, `notifications`, `featureFlags`, or `permissions` sub-object.**
   These types exist standalone in `@hostyara/contracts`
   (`auth.ts`, `notifications.ts`, `feature-flags.ts`, `permissions.ts`) but
