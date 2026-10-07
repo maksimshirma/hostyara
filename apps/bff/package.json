@@ -1,0 +1,27 @@
+{
+  "name": "@hostyara/bff",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Backend-for-frontend of the hostyara shell: holds identity sessions server-side and proxies sub-app backend calls",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:migrate": "tsx src/db/migrate.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.1",
+    "hono": "^4.6.14",
+    "kysely": "^0.29.6",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.12",
+    "@types/pg": "^8.23.1",
+    "jose": "^6.2.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
