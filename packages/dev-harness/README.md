@@ -31,6 +31,18 @@ import appModule from "./index";
 void runDevHarness(appModule, { appId: "recipes" });
 ```
 
+`sdk.api.request` has no backend in standalone mode and rejects with
+`upstream_unavailable` unless you pass a stand-in, and `sdk.access` defaults
+to `"edit"`:
+
+```ts
+void runDevHarness(appModule, {
+  appId: "recipes",
+  accessLevel: "view",
+  api: { request: async (_service, path) => (path === "/items" ? [] : undefined) as never },
+});
+```
+
 Wire this file up as a separate Rspack entry producing a `standalone.html`
 page, then run your app's own `dev` script and open that page — no other
 part of the platform needs to be running. See

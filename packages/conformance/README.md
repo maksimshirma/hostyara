@@ -10,6 +10,10 @@ runs this from its own Jest test — see
 [docs/app-module.md](../../docs/app-module.md) at the repo root for what
 each check actually asserts.
 
+The fake `HostSDK` it mounts with has no backend: `sdk.api.request` rejects
+with `upstream_unavailable` (so an app's error path runs) and `sdk.access`
+reports `"edit"`.
+
 ## Installation
 
 Workspace-internal package, added as a `devDependency`:

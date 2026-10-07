@@ -1,5 +1,5 @@
 import { HostSDK } from "@hostyara/contracts";
-import { createLifecycle } from "./index";
+import { createLifecycle } from "../index";
 
 describe("@hostyara/lifecycle", () => {
   const sdk: HostSDK = {
@@ -21,9 +21,19 @@ describe("@hostyara/lifecycle", () => {
     nav: { setBreadcrumbs: () => {}, setTitle: () => {} },
     apps: { open: () => {}, canOpen: () => false },
     share: {
-      create: async () => ({ url: "https://hostyara.app/s/token", expiresAt: "2026-10-05" }),
+      create: async () => ({
+        url: "https://hostyara.app/s/token",
+        expiresAt: "2026-10-05",
+      }),
       list: async () => [],
       revoke: async () => {},
+    },
+    api: { request: async () => undefined as never },
+    access: {
+      level: "edit",
+      can: () => true,
+      subscribe: () => () => {},
+      requestAccess: async () => {},
     },
   };
 

@@ -40,3 +40,16 @@ void boot();
 `hostOrigin` must match exactly — `connectToHost` rejects any message not
 from that origin. See [docs/remote-build.md](../../docs/remote-build.md)
 at the repo root for how this entry point is wired into a remote's build.
+
+## `api` and `access` across the boundary
+
+- `sdk.api.request` goes to the host over the channel; the host's own
+  `sdk.api` (pinned to this app and the open household) makes the BFF call.
+  Errors come back as the same plain `SdkApiError` objects (the channel only
+  carries strings for thrown errors, so results travel as
+  `{ ok, value | error }` values); a broken channel rejects with
+  `network_error`.
+- `sdk.access.level` and `can()` are synchronous, so the proxy keeps a local
+  snapshot: the one in the handshake ack, then every `access.changed` the
+  host pushes (which also fires `sdk.access.subscribe` callbacks). A host that
+  sends no snapshot grants nothing. `requestAccess` is forwarded to the host.
