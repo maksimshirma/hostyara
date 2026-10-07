@@ -26,6 +26,13 @@ describe("@hostyara/sdk", () => {
         list: async () => [],
         revoke: async () => {},
       },
+      api: { request: async () => undefined as never },
+      access: {
+        level: "edit",
+        can: () => true,
+        subscribe: () => () => {},
+        requestAccess: async () => {},
+      },
     };
 
     expect(sdk.mode).toBe("public");

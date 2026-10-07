@@ -2,7 +2,8 @@
 
 A type-only re-export barrel for the `HostSDK`-related types in
 `@hostyara/contracts` (`HostSDK`, `HostChannel`, `SdkContext`, `SdkRouter`,
-`SdkNav`, `SdkApps`, `SdkShare`, `Publication`, `Location`, `Crumb`). It
+`SdkNav`, `SdkApps`, `SdkShare`, `SdkApi`, `SdkAccess` and their helper types,
+`Publication`, `Location`, `Crumb`), plus the `isSdkApiError` type guard. It
 exists so app code can `import from "@hostyara/sdk"` without depending on
 the full, broader `@hostyara/contracts` surface — the types are identical
 either way.

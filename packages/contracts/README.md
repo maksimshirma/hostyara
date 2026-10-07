@@ -2,8 +2,9 @@
 
 Canonical TypeScript types shared between the host and every microfrontend:
 `AppModule` (the mount/unmount contract), `HostSDK` and its component
-types, `AppManifest`, `HostChannel`, and the iframe handshake message
-types. Every other package in this monorepo either depends on this one or
+types (including `SdkApi`/`SdkAccess` and the `isSdkApiError` guard — the
+package's only runtime helpers besides the iframe handshake ones),
+`AppManifest`, `HostChannel`, and the iframe handshake message types. Every other package in this monorepo either depends on this one or
 re-exports from it — it's the single source of truth for what a "contract"
 means on this platform.
 

@@ -36,6 +36,13 @@ describe("@hostyara/contracts", () => {
       list: async () => [],
       revoke: async () => {},
     },
+    api: { request: async () => undefined as never },
+    access: {
+      level: "edit",
+      can: () => true,
+      subscribe: () => () => {},
+      requestAccess: async () => {},
+    },
   };
 
   it("composes a HostSDK from mode, context, router, nav, apps and share", () => {
