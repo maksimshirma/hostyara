@@ -47,7 +47,6 @@ export function createFakeSdk(overrides: Partial<HostSDK> = {}): HostSDK {
       mode: "household",
       hid: "demo",
       user: { id: "u1", name: "Demo", email: "demo@example.com" },
-      permissions: [],
     },
     router: {
       location: { pathname: "/", search: "", hash: "" },

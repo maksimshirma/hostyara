@@ -59,8 +59,11 @@ export function createDevHarnessSdk(
     context: {
       mode: "household",
       hid: options.hid ?? "dev-harness",
-      user: { id: "dev-user", name: "Dev Harness", email: "dev-harness@example.com" },
-      permissions: [],
+      user: {
+        id: "dev-user",
+        name: "Dev Harness",
+        email: "dev-harness@example.com",
+      },
     },
     router: {
       get location() {
@@ -99,7 +102,11 @@ export function createDevHarnessSdk(
         console.info(
           `[dev-harness:${options.appId}] sdk.api.request(${service}, ${path}) — no backend configured`,
         );
-        const error: SdkApiError = { name: "SdkApiError", code: "upstream_unavailable", status: 0 };
+        const error: SdkApiError = {
+          name: "SdkApiError",
+          code: "upstream_unavailable",
+          status: 0,
+        };
         throw error;
       },
     },

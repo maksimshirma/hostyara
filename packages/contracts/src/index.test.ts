@@ -15,7 +15,7 @@ describe("@hostyara/contracts", () => {
   const sdk: HostSDK = {
     mode: "household",
     basename: "/h/f3k2xp/a/recipes",
-    context: { mode: "household", hid: "f3k2xp", user, permissions: ["read"] },
+    context: { mode: "household", hid: "f3k2xp", user },
     router: {
       location: { pathname: "/", search: "", hash: "" },
       navigate: () => {},
@@ -32,7 +32,10 @@ describe("@hostyara/contracts", () => {
       canOpen: () => true,
     },
     share: {
-      create: async () => ({ url: "https://hostyara.app/s/token", expiresAt: "2026-10-05" }),
+      create: async () => ({
+        url: "https://hostyara.app/s/token",
+        expiresAt: "2026-10-05",
+      }),
       list: async () => [],
       revoke: async () => {},
     },
@@ -127,7 +130,10 @@ describe("@hostyara/contracts", () => {
     expect(manifest.mount.remoteEntry).toContain("remoteEntry");
     expect(manifest.share?.entities).toContain("recipe");
 
-    const entry: RegistryEntry = { manifest, registeredAt: new Date().toISOString() };
+    const entry: RegistryEntry = {
+      manifest,
+      registeredAt: new Date().toISOString(),
+    };
     expect(entry.manifest.id).toBe("recipes");
   });
 

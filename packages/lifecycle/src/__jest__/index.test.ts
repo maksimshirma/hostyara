@@ -9,7 +9,6 @@ describe("@hostyara/lifecycle", () => {
       mode: "household",
       hid: "f3k2xp",
       user: { id: "u1", name: "Ada", email: "ada@example.com" },
-      permissions: [],
     },
     router: {
       location: { pathname: "/", search: "", hash: "" },
