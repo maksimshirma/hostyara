@@ -6,23 +6,20 @@ import { BffClient } from "../api/bffClient";
 import { loadRegistry } from "../registry/loadRegistry";
 import { createRemoteLoader, RemoteLoadError } from "../remote-loader";
 import { createMountManager } from "../mount-manager";
-import {
-  buildAppPath,
-  createHostRouter,
-  createHouseholdLookup,
-  Household,
-  installDevHistoryGuard,
-  Route,
-} from "../router";
+import { Household, installDevHistoryGuard, useHostRouter, useRoute } from "../router";
 import { AppAccessDecision, decideAppAccess } from "./appAccess";
-import { AppDock } from "./AppDock";
 import { buildSdk } from "./buildSdk";
 import { AppSlotStatus } from "./AppSlotStatus";
-import { SpaceSwitcherStub } from "./SpaceSwitcherStub";
 import { installGlobalErrorHandlers } from "./globalErrorHandlers";
 import { SlotErrorReason, SlotStatus } from "./slotStatus";
 import { createObservability, DevOverlay } from "../observability";
-import styles from "./HostChrome.module.css";
+import Box from "@mui/material/Box";
+import { ShellPage } from "../pages/ShellPage";
+import { createAppNavStore } from "./appNavStore";
+import { NavbarBreadcrumbs } from "./shell/NavbarBreadcrumbs";
+import { useShellBreadcrumbs } from "./useShellBreadcrumbs";
+import { buildShellNav } from "./shell/shellNav";
+import { ShellLayout } from "./shell/ShellLayout";
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
@@ -56,7 +53,7 @@ export interface HostChromeProps {
   accessTracker: AccessTracker;
   user: User;
   // The person's households; never empty (the session gate asks to create
-  // one first). The first is where a bare "/" lands.
+  // one first).
   households: Household[];
   onLogout: () => void;
 }
@@ -70,14 +67,9 @@ export function HostChrome({ bff, accessTracker, user, households, onLogout }: H
   const [mountManager] = useState(() => createMountManager(tokensHref));
   const [registry] = useState(loadRegistry);
   const [observability] = useState(() => createObservability());
-  const householdsRef = useRef(households);
-  householdsRef.current = households;
-  const [router] = useState(() =>
-    createHostRouter({
-      resolve: (hid) => createHouseholdLookup(householdsRef.current).resolve(hid),
-    }),
-  );
-  const [route, setRoute] = useState<Route>(() => router.getRoute());
+  const [appNav] = useState(createAppNavStore);
+  const router = useHostRouter();
+  const route = useRoute();
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
   const [slotStatus, setSlotStatus] = useState<SlotStatus>({ kind: "idle" });
   const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
@@ -87,8 +79,8 @@ export function HostChrome({ bff, accessTracker, user, households, onLogout }: H
   const accessSnapshot = useSyncExternalStore(accessTracker.subscribe, accessTracker.getSnapshot);
   const defaultHid = households[0].hid;
   const currentHid = route.kind === "space" ? route.hid : null;
+  const isAppRoute = route.kind === "space" && route.area.kind === "app";
   const hidSegment = route.kind === "space" ? route.hidSegment : defaultHid;
-  const household = createHouseholdLookup(households).resolve(currentHid ?? defaultHid);
   // The dock lists what is installed in this household once that is known.
   const apps = registry
     .list()
@@ -108,18 +100,6 @@ export function HostChrome({ bff, accessTracker, user, households, onLogout }: H
   );
 
   useEffect(() => installDevHistoryGuard(() => activeAppIdRef.current), []);
-
-  useEffect(() => {
-    if (router.getRoute().kind === "not-found" && window.location.pathname === "/") {
-      router.navigate(`/h/${householdsRef.current[0].hid}`, { replace: true });
-    }
-    const detach = router.attach();
-    const unsubscribe = router.subscribe(() => setRoute(router.getRoute()));
-    return () => {
-      detach();
-      unsubscribe();
-    };
-  }, [router]);
 
   // A route change (dock click, popstate, or the deep-link effect below
   // firing twice under StrictMode) can call openApp again before a prior
@@ -171,11 +151,13 @@ export function HostChrome({ bff, accessTracker, user, households, onLogout }: H
         await mountManager.unmount(slotRef.current);
         if (generation !== openGenerationRef.current) return;
         const mountStart = performance.now();
+        // Before mount: the app may publish its breadcrumbs from mount().
+        appNav.activate(appId);
         await mountManager.mount(
           slotRef.current,
           resolved.manifest,
           appModule,
-          buildSdk(appId, router, { bff, accessTracker, user }),
+          buildSdk(appId, router, { bff, accessTracker, user, appNav }),
         );
         observability.reportMetric({
           kind: "mount",
@@ -229,7 +211,21 @@ export function HostChrome({ bff, accessTracker, user, households, onLogout }: H
   // stays, so the app comes back by itself once access is granted.
   async function showDenied(appId: string, reason: SlotErrorReason) {
     ++openGenerationRef.current;
+    appNav.deactivate();
     setSlotStatus({ kind: "error", appName: appNameOf(appId), reason });
+    if (activeAppIdRef.current !== null && slotRef.current) {
+      setActiveAppId(null);
+      await mountManager.unmount(slotRef.current);
+    }
+  }
+
+  // Leaving the app area (a shell page, 404) unloads whatever app is open
+  // and cancels a load still in flight.
+  async function closeApp() {
+    ++openGenerationRef.current;
+    appNav.deactivate();
+    attemptedAppIdRef.current = null;
+    setSlotStatus({ kind: "idle" });
     if (activeAppIdRef.current !== null && slotRef.current) {
       setActiveAppId(null);
       await mountManager.unmount(slotRef.current);
@@ -246,7 +242,10 @@ export function HostChrome({ bff, accessTracker, user, households, onLogout }: H
   // update depth exceeded" guard. Only re-open when the target app
   // actually differs from what's already mounted.
   useEffect(() => {
-    if (route.kind !== "space" || route.area.kind !== "app") return;
+    if (route.kind !== "space" || route.area.kind !== "app") {
+      void closeApp();
+      return;
+    }
     const appId = route.area.appId;
     const decision = decideAppAccess(accessStatus, accessSnapshot, appId);
     if (decision === "pending") {
@@ -267,10 +266,6 @@ export function HostChrome({ bff, accessTracker, user, households, onLogout }: H
     if (appId !== activeAppId) void openApp(appId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route, activeAppId, accessStatus, accessSnapshot, requestedAccess]);
-
-  function selectApp(appId: string): void {
-    router.navigate(buildAppPath(hidSegment, appId));
-  }
 
   function retry(): void {
     if (slotStatus.kind === "error" && slotStatus.reason.kind === "access-unavailable") {
@@ -307,30 +302,26 @@ export function HostChrome({ bff, accessTracker, user, households, onLogout }: H
     };
   }, [mountManager]);
 
+  const breadcrumbs = useShellBreadcrumbs(route, households, appNav, appNameOf);
+
   return (
-    <div>
-      <div className={styles.header}>
-        <SpaceSwitcherStub name={household?.name ?? ""} />
-        <AppDock
-          apps={apps}
-          activeAppId={activeAppId}
-          hidSegment={hidSegment}
-          onSelect={selectApp}
-        />
-        <div className={styles.account}>
-          <span>{user.name}</span>
-          <button type="button" onClick={onLogout}>
-            Выйти
-          </button>
-        </div>
-      </div>
+    <ShellLayout
+      breadcrumbs={<NavbarBreadcrumbs trail={breadcrumbs} />}
+      nav={buildShellNav(route, hidSegment, apps)}
+      households={households}
+      currentHid={currentHid}
+      user={user}
+      onLogout={onLogout}
+    >
+      {!isAppRoute && <ShellPage route={route} />}
       <AppSlotStatus
         status={slotStatus}
         onRetry={retry}
         onRequestAccess={(level) => void requestAccess(level)}
       />
-      <div className={styles.slot} ref={slotRef} />
+      {/* Always mounted: the mount manager keeps the app's shadow root here. */}
+      <Box ref={slotRef} sx={{ display: isAppRoute ? undefined : "none" }} />
       <DevOverlay observability={observability} />
-    </div>
+    </ShellLayout>
   );
 }

@@ -159,9 +159,7 @@ describe("SessionGate", () => {
       "/api/h/h42/access": () => ({ status: 200, body: ACCESS }),
     });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Нет аккаунта? Зарегистрироваться" }),
-    );
+    await userEvent.click(await screen.findByRole("link", { name: "Зарегистрироваться" }));
     await userEvent.type(screen.getByLabelText("Имя"), "Анна");
     await userEvent.type(screen.getByLabelText("Почта"), USER.email);
     await userEvent.type(screen.getByLabelText("Пароль"), "correct-horse");
@@ -179,7 +177,7 @@ describe("SessionGate", () => {
     });
   });
 
-  it("returns to the login screen when the BFF reports the session gone, keeping the URL", async () => {
+  it("returns to the login screen when the BFF reports the session gone, keeping the URL in _from", async () => {
     // The session expires between /auth/me and the first access check.
     window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/recipes");
     setup({
@@ -192,7 +190,87 @@ describe("SessionGate", () => {
     });
 
     expect(await screen.findByText("Сессия завершена — войдите снова")).toBeInTheDocument();
-    expect(window.location.pathname).toBe("/h/demo-semya-ivanovyh/a/recipes");
+    expect(window.location.pathname).toBe("/login");
+    expect(new URLSearchParams(window.location.search).get("_from")).toBe(
+      "/h/demo-semya-ivanovyh/a/recipes",
+    );
+  });
+
+  it("sends a signed-out deep link to /login and returns there after signing in", async () => {
+    window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/recipes?x=1");
+    setup({
+      ...signedOut,
+      "POST /auth/login": () => ({ status: 200, body: { user: USER } }),
+      ...households,
+    });
+
+    expect(await screen.findByRole("heading", { name: "Вход" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/login");
+
+    await fillLogin();
+
+    await waitFor(() =>
+      expect(`${window.location.pathname}${window.location.search}`).toBe(
+        "/h/demo-semya-ivanovyh/a/recipes?x=1",
+      ),
+    );
+  });
+
+  it("opens the sign-up form on /signup and switches back to /login keeping _from", async () => {
+    window.history.replaceState(null, "", "/signup?_from=%2Fh%2Fdemo");
+    setup(signedOut);
+
+    expect(await screen.findByRole("heading", { name: "Регистрация" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: "Войти" }));
+
+    expect(await screen.findByRole("heading", { name: "Вход" })).toBeInTheDocument();
+    expect(`${window.location.pathname}${window.location.search}`).toBe("/login?_from=%2Fh%2Fdemo");
+  });
+
+  it("leaves /login for the first household when a session already exists", async () => {
+    window.history.replaceState(null, "", "/login");
+    setup({
+      "/auth/me": () => ({ status: 200, body: { userId: "u1", user: USER } }),
+      ...households,
+    });
+
+    expect(await screen.findByRole("link", { name: "Рецепты" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/h/demo-semya-ivanovyh");
+  });
+
+  it("shows a public share page without the shell, offering to sign up", async () => {
+    window.history.replaceState(null, "", "/s/9fKq2m/pasta");
+    setup(signedOut);
+
+    expect(await screen.findByRole("heading", { name: "Публикация" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Зарегистрироваться" })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
+    expect(screen.queryByRole("navigation", { name: "Приложения" })).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe("/s/9fKq2m/pasta");
+  });
+
+  it("shows a standalone 404 for an unknown address outside a household", async () => {
+    window.history.replaceState(null, "", "/nowhere");
+    setup({
+      "/auth/me": () => ({ status: 200, body: { userId: "u1", user: USER } }),
+      ...households,
+    });
+
+    expect(await screen.findByRole("heading", { name: "Страница не найдена" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Приложения" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the shell around a 404 inside a household", async () => {
+    window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/unknown");
+    setup({
+      "/auth/me": () => ({ status: 200, body: { userId: "u1", user: USER } }),
+      ...households,
+    });
+
+    expect(await screen.findByRole("heading", { name: "Страница не найдена" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Приложения" })).toBeInTheDocument();
   });
 
   it("logs out through the BFF", async () => {
@@ -205,6 +283,7 @@ describe("SessionGate", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Выйти" }));
 
     expect(await screen.findByRole("heading", { name: "Вход" })).toBeInTheDocument();
+    expect(`${window.location.pathname}${window.location.search}`).toBe("/login");
     expect(calls.some((call) => call.method === "POST" && call.path === "/auth/logout")).toBe(true);
   });
 

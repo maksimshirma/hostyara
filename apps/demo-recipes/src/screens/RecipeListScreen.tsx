@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import styles from "../App.module.css";
 import { BackendCheck } from "../BackendCheck";
+import { useSdk } from "../sdkContext";
 
 interface Recipe {
   id: string;
@@ -17,9 +19,16 @@ const RECIPES: Recipe[] = [
 const TAGS = ["", "завтрак", "обед", "ужин"];
 
 export function RecipeListScreen() {
+  const sdk = useSdk();
   const [searchParams, setSearchParams] = useSearchParams();
   const tag = searchParams.get("tag") ?? "";
   const recipes = tag ? RECIPES.filter((recipe) => recipe.tag === tag) : RECIPES;
+
+  // The app's root: nothing to add after the shell's "household / Рецепты".
+  useEffect(() => {
+    sdk.nav.setBreadcrumbs([]);
+    sdk.nav.setTitle("Рецепты");
+  }, [sdk]);
 
   return (
     <div className={styles.card}>
