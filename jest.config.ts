@@ -5,7 +5,7 @@ const config: Config = {
   testEnvironment: "jsdom",
   roots: ["<rootDir>/packages", "<rootDir>/apps"],
   testMatch: ["**/__tests__/**/*.ts?(x)", "**/?(*.)+(spec|test).ts?(x)"],
-  testPathIgnorePatterns: ["/node_modules/", "/e2e/"],
+  testPathIgnorePatterns: ["/node_modules/", "/e2e/", "/e2e-full/", "\\.integration\\.test\\.ts$"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/apps/host/src/$1",
     "\\.(css|less|scss|sass)\\?url$": "<rootDir>/jest.cssUrlMock.js",

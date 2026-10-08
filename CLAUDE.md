@@ -142,6 +142,18 @@ Before finishing, review the implementation against these questions:
 - **Minimal Impact**: Change only what is necessary.
 - **Verify Before Done**: Verify the result instead of assuming it works.
 
+## Package and App Documentation
+
+- Every package under `packages/*` and every app under `apps/*` must have its own `README.md`: clear, self-contained, concise, well-structured, accurate, and understandable without prior project knowledge.
+- At minimum, every README must include:
+  - **Title** — a prominent heading at the top.
+  - **Description** — 1–2 sentences: what it does, what problem it solves, who it's for.
+  - **Installation** — step-by-step commands to run it locally.
+  - **Usage** — a short code snippet, CLI command, or screenshot demonstrating it in action.
+- When a new package or app is added, create its `README.md` as part of that change.
+- When a package or app is modified, review its `README.md` and update it if the change affects its API, behavior, configuration, architecture, usage, or dependencies — or any other information the README documents.
+- Before considering a task complete, verify that every package/app touched by the task has an existing, up-to-date `README.md`. Missing or stale documentation for an affected package/app blocks completion.
+
 ## Commit Messages
 
 Use [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`

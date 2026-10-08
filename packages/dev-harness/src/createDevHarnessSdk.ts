@@ -1,4 +1,4 @@
-import { HostSDK, Location } from "@hostyara/contracts";
+import { AccessLevel, HostSDK, Location, SdkApi, SdkApiError } from "@hostyara/contracts";
 
 // tech.md §8: sdk.ui covers the cases where an app would otherwise reach
 // for a portal into document.body (dialog/confirm/drawer/toast) and lose
@@ -23,6 +23,11 @@ export interface DevHarnessOptions {
   // Defaults to "/" — see runDevHarness for why that's not just the
   // static file's own served path.
   startPath?: string;
+  // Stand-in for the app's backend while developing without the host. By
+  // default every call rejects with `upstream_unavailable`.
+  api?: SdkApi;
+  // Defaults to "edit" with every permission granted.
+  accessLevel?: AccessLevel;
 }
 
 function currentLocation(): Location {
@@ -54,8 +59,11 @@ export function createDevHarnessSdk(
     context: {
       mode: "household",
       hid: options.hid ?? "dev-harness",
-      user: { id: "dev-user", name: "Dev Harness", email: "dev-harness@example.com" },
-      permissions: [],
+      user: {
+        id: "dev-user",
+        name: "Dev Harness",
+        email: "dev-harness@example.com",
+      },
     },
     router: {
       get location() {
@@ -88,6 +96,27 @@ export function createDevHarnessSdk(
       create: async () => ({ url: "", expiresAt: "" }),
       list: async () => [],
       revoke: async () => {},
+    },
+    api: options.api ?? {
+      request: async (service, path) => {
+        console.info(
+          `[dev-harness:${options.appId}] sdk.api.request(${service}, ${path}) — no backend configured`,
+        );
+        const error: SdkApiError = {
+          name: "SdkApiError",
+          code: "upstream_unavailable",
+          status: 0,
+        };
+        throw error;
+      },
+    },
+    access: {
+      level: options.accessLevel ?? "edit",
+      can: (action) => action !== "edit" || (options.accessLevel ?? "edit") === "edit",
+      subscribe: () => () => {},
+      requestAccess: async (level) => {
+        console.info(`[dev-harness:${options.appId}] sdk.access.requestAccess(${level}) called`);
+      },
     },
     ui: {
       styleRoot,

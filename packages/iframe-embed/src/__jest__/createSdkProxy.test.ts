@@ -10,14 +10,15 @@ function fakeAck(overrides: Partial<IframeAckMessage> = {}): IframeAckMessage {
       mode: "household",
       hid: "f3k2xp",
       user: { id: "u1", name: "Demo", email: "demo@example.com" },
-      permissions: [],
     },
     location: { pathname: "/r/8421", search: "", hash: "" },
     ...overrides,
   };
 }
 
-function fakeChannel(): HostChannel & { handlers: Map<string, ChannelHandler> } {
+function fakeChannel(): HostChannel & {
+  handlers: Map<string, ChannelHandler>;
+} {
   const handlers = new Map<string, ChannelHandler>();
   return {
     handlers,
@@ -100,20 +101,29 @@ describe("createSdkProxy", () => {
 
     sdk.apps.open("budget", "/tx/1");
 
-    expect(channel.request).toHaveBeenCalledWith("apps.open", { appId: "budget", to: "/tx/1" });
+    expect(channel.request).toHaveBeenCalledWith("apps.open", {
+      appId: "budget",
+      to: "/tx/1",
+    });
     expect(sdk.apps.canOpen("budget")).toBe(false);
   });
 
   it("forwards share.create/list/revoke and resolves with the channel's result", async () => {
     const channel = fakeChannel();
-    (channel.request as jest.Mock).mockResolvedValue({ url: "https://x", expiresAt: "2030" });
+    (channel.request as jest.Mock).mockResolvedValue({
+      url: "https://x",
+      expiresAt: "2030",
+    });
     const sdk = createSdkProxy(channel, fakeAck());
 
     await expect(sdk.share.create("recipe", "8421")).resolves.toEqual({
       url: "https://x",
       expiresAt: "2030",
     });
-    expect(channel.request).toHaveBeenCalledWith("share.create", { type: "recipe", id: "8421" });
+    expect(channel.request).toHaveBeenCalledWith("share.create", {
+      type: "recipe",
+      id: "8421",
+    });
   });
 
   it("updates router.location and notifies subscribers when the host pushes a change", () => {
@@ -136,8 +146,113 @@ describe("createSdkProxy", () => {
     const unsubscribe = sdk.router.subscribe(listener);
     unsubscribe();
 
-    channel.handlers.get("router.locationChanged")?.({ pathname: "/r/1", search: "", hash: "" });
+    channel.handlers.get("router.locationChanged")?.({
+      pathname: "/r/1",
+      search: "",
+      hash: "",
+    });
 
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  describe("api", () => {
+    it("unwraps a successful result", async () => {
+      const channel = fakeChannel();
+      (channel.request as jest.Mock).mockResolvedValue({
+        ok: true,
+        value: [1, 2],
+      });
+      const sdk = createSdkProxy(channel, fakeAck());
+
+      await expect(sdk.api.request("recipes", "/items", { query: { q: "a" } })).resolves.toEqual([
+        1, 2,
+      ]);
+      expect(channel.request).toHaveBeenCalledWith("api.request", {
+        service: "recipes",
+        path: "/items",
+        init: { query: { q: "a" } },
+      });
+    });
+
+    it("rethrows the host's SdkApiError as-is", async () => {
+      const channel = fakeChannel();
+      const error = {
+        name: "SdkApiError",
+        code: "http_error",
+        status: 422,
+        body: { field: "title" },
+      };
+      (channel.request as jest.Mock).mockResolvedValue({ ok: false, error });
+      const sdk = createSdkProxy(channel, fakeAck());
+
+      await expect(sdk.api.request("recipes", "/items")).rejects.toEqual(error);
+    });
+
+    it("turns a broken channel into network_error", async () => {
+      const channel = fakeChannel();
+      (channel.request as jest.Mock).mockRejectedValue(
+        new Error('No handler registered for method "api.request"'),
+      );
+      const sdk = createSdkProxy(channel, fakeAck());
+
+      await expect(sdk.api.request("recipes", "/items")).rejects.toEqual({
+        name: "SdkApiError",
+        code: "network_error",
+        status: 0,
+      });
+    });
+  });
+
+  describe("access", () => {
+    it("starts from the handshake snapshot", () => {
+      const sdk = createSdkProxy(
+        fakeChannel(),
+        fakeAck({ access: { level: "edit", permissions: ["storage.own"] } }),
+      );
+
+      expect(sdk.access.level).toBe("edit");
+      expect(sdk.access.can("edit")).toBe(true);
+      expect(sdk.access.can("storage.own")).toBe(true);
+      expect(sdk.access.can("notifications.send")).toBe(false);
+    });
+
+    it("grants nothing when the host sent no snapshot", () => {
+      const sdk = createSdkProxy(fakeChannel(), fakeAck());
+
+      expect(sdk.access.level).toBe("view");
+      expect(sdk.access.can("edit")).toBe(false);
+    });
+
+    it("applies pushed changes and notifies subscribers", () => {
+      const channel = fakeChannel();
+      const sdk = createSdkProxy(channel, fakeAck({ access: { level: "edit", permissions: [] } }));
+      const callback = jest.fn();
+      const unsubscribe = sdk.access.subscribe(callback);
+
+      channel.handlers.get("access.changed")!({
+        level: "view",
+        permissions: [],
+      });
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(sdk.access.can("edit")).toBe(false);
+      unsubscribe();
+      channel.handlers.get("access.changed")!({
+        level: "edit",
+        permissions: [],
+      });
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it("forwards requestAccess to the host", async () => {
+      const channel = fakeChannel();
+      const sdk = createSdkProxy(channel, fakeAck());
+
+      await sdk.access.requestAccess("edit");
+
+      expect(channel.request).toHaveBeenCalledWith("access.requestAccess", {
+        level: "edit",
+      });
+    });
   });
 });

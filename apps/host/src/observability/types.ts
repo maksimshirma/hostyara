@@ -10,7 +10,7 @@ export interface ErrorContext {
 }
 
 export interface ErrorReport extends ErrorContext {
-  source: "window-error" | "unhandledrejection" | "load-failed" | "mount-failed";
+  source: "window-error" | "unhandledrejection" | "load-failed" | "mount-failed" | "access-request";
   message: string;
 }
 

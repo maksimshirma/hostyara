@@ -1,4 +1,4 @@
-import { HostSDK, Location } from "@hostyara/contracts";
+import { HostSDK, Location, SdkApiError } from "@hostyara/contracts";
 
 // Mirrors how the real host builds an app's sdk (HostChrome's buildSdk,
 // T15): basename/context are read live off mutable internal state rather
@@ -56,6 +56,20 @@ export function createConformanceSdk(appId: string): ConformanceSdk {
       create: async () => ({ url: "", expiresAt: "" }),
       list: async () => [],
       revoke: async () => {},
+    },
+    // No backend behind the conformance harness: calls reject the way the
+    // real host does when the BFF is unreachable, so apps' error paths run.
+    api: {
+      request: async () => {
+        const error: SdkApiError = { name: "SdkApiError", code: "upstream_unavailable", status: 0 };
+        throw error;
+      },
+    },
+    access: {
+      level: "edit",
+      can: () => true,
+      subscribe: () => () => {},
+      requestAccess: async () => {},
     },
   };
 

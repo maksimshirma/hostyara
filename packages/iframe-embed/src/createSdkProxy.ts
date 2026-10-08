@@ -1,4 +1,13 @@
-import { HostChannel, HostSDK, IframeAckMessage, Location } from "@hostyara/contracts";
+import {
+  HostChannel,
+  HostSDK,
+  IframeAccessSnapshot,
+  IframeAckMessage,
+  IframeApiResult,
+  Location,
+  SdkApiError,
+  SdkApiRequestInit,
+} from "@hostyara/contracts";
 
 // A framework router adapter (createReactRouterHistory et al.) calls
 // sdk.router.navigate() then immediately reads sdk.router.location back to
@@ -26,6 +35,14 @@ export function createSdkProxy(channel: HostChannel, initial: IframeAckMessage):
   channel.on<Location, void>("router.locationChanged", (location) => {
     currentLocation = location;
     for (const listener of locationListeners) listener(location);
+  });
+
+  // Hosts predating sdk.access send no snapshot: no rights until told otherwise.
+  let access: IframeAccessSnapshot = initial.access ?? { level: "view", permissions: [] };
+  const accessListeners = new Set<() => void>();
+  channel.on<IframeAccessSnapshot, void>("access.changed", (snapshot) => {
+    access = snapshot;
+    for (const listener of accessListeners) listener();
   });
 
   return {
@@ -82,6 +99,38 @@ export function createSdkProxy(channel: HostChannel, initial: IframeAckMessage):
       create: (type, id) => channel.request("share.create", { type, id }),
       list: (type, id) => channel.request("share.list", { type, id }),
       revoke: (token) => channel.request("share.revoke", { token }),
+    },
+    api: {
+      async request<T>(service: string, path: string, init?: SdkApiRequestInit): Promise<T> {
+        let result: IframeApiResult;
+        try {
+          result = await channel.request<unknown, IframeApiResult>("api.request", {
+            service,
+            path,
+            init,
+          });
+        } catch {
+          // The channel itself failed (host gone, or one without sdk.api).
+          throw { name: "SdkApiError", code: "network_error", status: 0 } satisfies SdkApiError;
+        }
+        if (result.ok) return result.value as T;
+        throw result.error;
+      },
+    },
+    access: {
+      get level() {
+        return access.level;
+      },
+      can(action) {
+        return action === "edit" ? access.level === "edit" : access.permissions.includes(action);
+      },
+      subscribe(callback) {
+        accessListeners.add(callback);
+        return () => {
+          accessListeners.delete(callback);
+        };
+      },
+      requestAccess: (level) => channel.request("access.requestAccess", { level }),
     },
   };
 }

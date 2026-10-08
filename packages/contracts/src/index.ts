@@ -17,6 +17,8 @@ export * from "./sdk-router";
 export * from "./sdk-nav";
 export * from "./sdk-apps";
 export * from "./sdk-share";
+export * from "./sdk-api";
+export * from "./sdk-access";
 export * from "./publication";
 export * from "./app-mount";
 export * from "./network";

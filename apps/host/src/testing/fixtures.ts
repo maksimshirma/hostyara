@@ -1,4 +1,6 @@
 import { AppManifest, HostSDK } from "@hostyara/contracts";
+import { AccessSnapshot, createAccessTracker } from "../api/accessTracker";
+import { BffClient } from "../api/bffClient";
 import { AppRegistry, SUPPORTED_CONTRACT_MAJOR } from "@hostyara/registry";
 
 // Shared across unit tests that need a manifest/sdk/registry shaped
@@ -45,7 +47,6 @@ export function createFakeSdk(overrides: Partial<HostSDK> = {}): HostSDK {
       mode: "household",
       hid: "demo",
       user: { id: "u1", name: "Demo", email: "demo@example.com" },
-      permissions: [],
     },
     router: {
       location: { pathname: "/", search: "", hash: "" },
@@ -61,6 +62,58 @@ export function createFakeSdk(overrides: Partial<HostSDK> = {}): HostSDK {
       list: jest.fn().mockResolvedValue([]),
       revoke: jest.fn().mockResolvedValue(undefined),
     },
+    api: { request: jest.fn().mockResolvedValue(undefined) },
+    access: {
+      level: "edit",
+      can: jest.fn().mockReturnValue(true),
+      subscribe: jest.fn(() => () => {}),
+      requestAccess: jest.fn().mockResolvedValue(undefined),
+    },
     ...overrides,
+  };
+}
+
+// Every registry app installed and editable unless a test says otherwise.
+export const FULL_ACCESS: AccessSnapshot = {
+  role: "owner",
+  installedApps: ["recipes", "budget", "recipes-iframe"],
+  grants: { recipes: "edit", budget: "edit", "recipes-iframe": "edit" },
+  permissions: {},
+};
+
+export const DEMO_HOUSEHOLDS = [{ hid: "demo", name: "Семья Ивановых" }];
+export const DEMO_USER = { id: "u1", name: "Демо", email: "demo@example.com" };
+
+// Everything HostChrome takes as props: the signed-in demo user in the demo
+// household, and an in-memory BFF that answers /api/h/:hid/access with
+// `access` behind a no-op event stream (jsdom has no EventSource).
+export function createFakeShellServices(initialAccess: AccessSnapshot = FULL_ACCESS) {
+  let access = initialAccess;
+  const request = jest.fn(async (path: string, _init?: unknown) => {
+    if (/^\/api\/h\/[^/]+\/access$/.test(path)) return access;
+    return undefined;
+  });
+  const bff = { request } as unknown as BffClient;
+  const accessTracker = createAccessTracker({
+    bff,
+    onSessionEnded: jest.fn(),
+    createEventSource: () => ({
+      readyState: 1,
+      onerror: null,
+      addEventListener: () => {},
+      close: () => {},
+    }),
+  });
+  return {
+    bff,
+    accessTracker,
+    user: DEMO_USER,
+    households: DEMO_HOUSEHOLDS,
+    onLogout: jest.fn(),
+    // Stands in for an access.changed event from the BFF.
+    changeAccess(next: AccessSnapshot): Promise<void> {
+      access = next;
+      return accessTracker.refresh();
+    },
   };
 }

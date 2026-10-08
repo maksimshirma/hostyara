@@ -1,20 +1,22 @@
-import { useEffect, useRef, useState } from "react";
-import { HostSDK } from "@hostyara/contracts";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { AccessLevel, User } from "@hostyara/contracts";
 import tokensHref from "@hostyara/ui/src/tokens/tokens.css?url";
+import { AccessTracker } from "../api/accessTracker";
+import { BffClient } from "../api/bffClient";
 import { loadRegistry } from "../registry/loadRegistry";
 import { createRemoteLoader, RemoteLoadError } from "../remote-loader";
 import { createMountManager } from "../mount-manager";
 import {
   buildAppPath,
   createHostRouter,
-  createSdkRouter,
-  getLiveBasename,
-  HostRouter,
+  createHouseholdLookup,
+  Household,
   installDevHistoryGuard,
-  loadHouseholds,
   Route,
 } from "../router";
+import { AppAccessDecision, decideAppAccess } from "./appAccess";
 import { AppDock } from "./AppDock";
+import { buildSdk } from "./buildSdk";
 import { AppSlotStatus } from "./AppSlotStatus";
 import { SpaceSwitcherStub } from "./SpaceSwitcherStub";
 import { installGlobalErrorHandlers } from "./globalErrorHandlers";
@@ -24,45 +26,6 @@ import styles from "./HostChrome.module.css";
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
-
-// The one household in packages/router/households.json — stands in for
-// "the person's last active space" until account/session (out of scope
-// here) picks a real one.
-const DEFAULT_HID = "demo";
-
-// nav/apps/share are still stand-ins (no breadcrumbs, cross-app links, or
-// sharing built yet) — router is the real thing, wired to the host's own
-// router via createSdkRouter.
-//
-// basename/context read from hostRouter live (see createSdkRouter) rather
-// than being captured once here — a household switch (hid change) while
-// this app stays mounted (T15) must update what the app sees without a
-// remount, and a fresh read on every access is what makes that automatic.
-function buildSdk(appId: string, hostRouter: HostRouter): HostSDK {
-  return {
-    mode: "household",
-    get basename() {
-      return getLiveBasename(hostRouter, appId);
-    },
-    get context() {
-      const route = hostRouter.getRoute();
-      return {
-        mode: "household" as const,
-        hid: route.kind === "space" ? route.hid : "",
-        user: { id: "u1", name: "Demo", email: "demo@example.com" },
-        permissions: [],
-      };
-    },
-    router: createSdkRouter(hostRouter, appId),
-    nav: { setBreadcrumbs: () => {}, setTitle: () => {} },
-    apps: { open: () => {}, canOpen: () => false },
-    share: {
-      create: async () => ({ url: "", expiresAt: "" }),
-      list: async () => [],
-      revoke: async () => {},
-    },
-  };
 }
 
 function errorMessage(error: unknown): string {
@@ -80,7 +43,25 @@ interface LastAttempt {
   appId: string;
 }
 
-export function HostChrome() {
+const DENIED_REASONS: Record<Exclude<AppAccessDecision, "allow" | "pending">, SlotErrorReason> = {
+  "not-installed": { kind: "not-installed" },
+  "no-grant": { kind: "no-access", requested: false },
+  "not-member": { kind: "not-member" },
+  unavailable: { kind: "access-unavailable" },
+};
+
+export interface HostChromeProps {
+  bff: BffClient;
+  // Follows the open household; HostChrome points it at route.hid.
+  accessTracker: AccessTracker;
+  user: User;
+  // The person's households; never empty (the session gate asks to create
+  // one first). The first is where a bare "/" lands.
+  households: Household[];
+  onLogout: () => void;
+}
+
+export function HostChrome({ bff, accessTracker, user, households, onLogout }: HostChromeProps) {
   const slotRef = useRef<HTMLDivElement>(null);
   const attemptedAppIdRef = useRef<string | null>(null);
   const attemptedVersionRef = useRef<string | null>(null);
@@ -89,13 +70,30 @@ export function HostChrome() {
   const [mountManager] = useState(() => createMountManager(tokensHref));
   const [registry] = useState(loadRegistry);
   const [observability] = useState(() => createObservability());
-  const [router] = useState(() => createHostRouter(loadHouseholds()));
+  const householdsRef = useRef(households);
+  householdsRef.current = households;
+  const [router] = useState(() =>
+    createHostRouter({
+      resolve: (hid) => createHouseholdLookup(householdsRef.current).resolve(hid),
+    }),
+  );
   const [route, setRoute] = useState<Route>(() => router.getRoute());
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
   const [slotStatus, setSlotStatus] = useState<SlotStatus>({ kind: "idle" });
   const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
-  const apps = registry.list().map((entry) => entry.manifest);
-  const hidSegment = route.kind === "space" ? route.hidSegment : DEFAULT_HID;
+  // "hid/appId" pairs this tab already sent an access request for.
+  const [requestedAccess, setRequestedAccess] = useState<string[]>([]);
+  const accessStatus = useSyncExternalStore(accessTracker.subscribe, accessTracker.getStatus);
+  const accessSnapshot = useSyncExternalStore(accessTracker.subscribe, accessTracker.getSnapshot);
+  const defaultHid = households[0].hid;
+  const currentHid = route.kind === "space" ? route.hid : null;
+  const hidSegment = route.kind === "space" ? route.hidSegment : defaultHid;
+  const household = createHouseholdLookup(households).resolve(currentHid ?? defaultHid);
+  // The dock lists what is installed in this household once that is known.
+  const apps = registry
+    .list()
+    .map((entry) => entry.manifest)
+    .filter((manifest) => !accessSnapshot || accessSnapshot.installedApps.includes(manifest.id));
   const activeAppIdRef = useRef(activeAppId);
   activeAppIdRef.current = activeAppId;
 
@@ -113,7 +111,7 @@ export function HostChrome() {
 
   useEffect(() => {
     if (router.getRoute().kind === "not-found" && window.location.pathname === "/") {
-      router.navigate(`/h/${DEFAULT_HID}`, { replace: true });
+      router.navigate(`/h/${householdsRef.current[0].hid}`, { replace: true });
     }
     const detach = router.attach();
     const unsubscribe = router.subscribe(() => setRoute(router.getRoute()));
@@ -177,7 +175,7 @@ export function HostChrome() {
           slotRef.current,
           resolved.manifest,
           appModule,
-          buildSdk(appId, router),
+          buildSdk(appId, router, { bff, accessTracker, user }),
         );
         observability.reportMetric({
           kind: "mount",
@@ -216,6 +214,28 @@ export function HostChrome() {
     }
   }
 
+  useEffect(() => {
+    accessTracker.setHid(currentHid);
+    return () => accessTracker.setHid(null);
+  }, [accessTracker, currentHid]);
+
+  function appNameOf(appId: string): string {
+    const resolved = registry.resolve(appId);
+    return resolved.ok ? resolved.manifest.name : appId;
+  }
+
+  // IA 13.7: without access the app is not mounted — or is unmounted if
+  // access went away while it was open — and the shell shows why. The URL
+  // stays, so the app comes back by itself once access is granted.
+  async function showDenied(appId: string, reason: SlotErrorReason) {
+    ++openGenerationRef.current;
+    setSlotStatus({ kind: "error", appName: appNameOf(appId), reason });
+    if (activeAppIdRef.current !== null && slotRef.current) {
+      setActiveAppId(null);
+      await mountManager.unmount(slotRef.current);
+    }
+  }
+
   // Direct load of a deep link (cold start) goes through the same path as
   // a dock click: the route changes, this effect reacts to it. Once an app
   // is mounted, its own router adapter is already subscribed to sdk.router
@@ -226,18 +246,58 @@ export function HostChrome() {
   // update depth exceeded" guard. Only re-open when the target app
   // actually differs from what's already mounted.
   useEffect(() => {
-    if (route.kind === "space" && route.area.kind === "app" && route.area.appId !== activeAppId) {
-      void openApp(route.area.appId);
+    if (route.kind !== "space" || route.area.kind !== "app") return;
+    const appId = route.area.appId;
+    const decision = decideAppAccess(accessStatus, accessSnapshot, appId);
+    if (decision === "pending") {
+      if (appId !== activeAppId) setSlotStatus({ kind: "loading", appName: appNameOf(appId) });
+      return;
     }
+    if (decision !== "allow") {
+      const reason =
+        decision === "no-grant"
+          ? {
+              kind: "no-access" as const,
+              requested: requestedAccess.includes(`${route.hid}/${appId}`),
+            }
+          : DENIED_REASONS[decision];
+      void showDenied(appId, reason);
+      return;
+    }
+    if (appId !== activeAppId) void openApp(appId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route, activeAppId]);
+  }, [route, activeAppId, accessStatus, accessSnapshot, requestedAccess]);
 
   function selectApp(appId: string): void {
     router.navigate(buildAppPath(hidSegment, appId));
   }
 
   function retry(): void {
+    if (slotStatus.kind === "error" && slotStatus.reason.kind === "access-unavailable") {
+      void accessTracker.refresh();
+      return;
+    }
     if (lastAttempt) void openApp(lastAttempt.appId);
+  }
+
+  async function requestAccess(level: AccessLevel): Promise<void> {
+    if (route.kind !== "space" || route.area.kind !== "app") return;
+    const { hid } = route;
+    const { appId } = route.area;
+    try {
+      await bff.request("/identity/grant-requests", {
+        method: "POST",
+        body: { hid, appId, requestedLevel: level },
+      });
+      setRequestedAccess((keys) => [...keys, `${hid}/${appId}`]);
+    } catch (error) {
+      observability.reportError({
+        appId,
+        remoteVersion: null,
+        source: "access-request",
+        message: errorMessage(error),
+      });
+    }
   }
 
   useEffect(() => {
@@ -250,15 +310,25 @@ export function HostChrome() {
   return (
     <div>
       <div className={styles.header}>
-        <SpaceSwitcherStub />
+        <SpaceSwitcherStub name={household?.name ?? ""} />
         <AppDock
           apps={apps}
           activeAppId={activeAppId}
           hidSegment={hidSegment}
           onSelect={selectApp}
         />
+        <div className={styles.account}>
+          <span>{user.name}</span>
+          <button type="button" onClick={onLogout}>
+            Выйти
+          </button>
+        </div>
       </div>
-      <AppSlotStatus status={slotStatus} onRetry={retry} />
+      <AppSlotStatus
+        status={slotStatus}
+        onRetry={retry}
+        onRequestAccess={(level) => void requestAccess(level)}
+      />
       <div className={styles.slot} ref={slotRef} />
       <DevOverlay observability={observability} />
     </div>

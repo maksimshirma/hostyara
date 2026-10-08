@@ -6,7 +6,15 @@ export type {
   SdkNav,
   SdkApps,
   SdkShare,
+  SdkApi,
+  SdkApiRequestInit,
+  SdkApiMethod,
+  SdkApiError,
+  SdkApiErrorCode,
+  SdkAccess,
+  AccessLevel,
   Publication,
   Location,
   Crumb,
 } from "@hostyara/contracts";
+export { isSdkApiError } from "@hostyara/contracts";

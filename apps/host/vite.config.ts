@@ -3,6 +3,13 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { cspVitePlugin } from "./src/csp/cspVitePlugin";
 
+// The host and the BFF share one origin (token-storage.md): in dev and
+// preview the host's server forwards the BFF's paths to it.
+const BFF_URL = process.env.BFF_URL ?? "http://localhost:4000";
+const bffProxy = Object.fromEntries(
+  ["/auth", "/identity", "/api"].map((prefix) => [prefix, { target: BFF_URL }]),
+);
+
 export default defineConfig({
   plugins: [react(), cspVitePlugin()],
   resolve: {
@@ -12,6 +19,10 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    proxy: bffProxy,
+  },
+  preview: {
+    proxy: bffProxy,
   },
   build: {
     // Generated for internal error-reporting tooling to fetch by

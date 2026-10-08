@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import styles from "../App.module.css";
+import { BackendCheck } from "../BackendCheck";
 
 interface Recipe {
   id: string;
@@ -23,6 +24,7 @@ export function RecipeListScreen() {
   return (
     <div className={styles.card}>
       <h2 className={styles.title}>Рецепты</h2>
+      <BackendCheck />
       <div role="group" aria-label="Фильтр по тегу">
         {TAGS.map((option) => (
           <button

@@ -1,3 +1,5 @@
+import { SdkAccess } from "./sdk-access";
+import { SdkApi } from "./sdk-api";
 import { SdkApps } from "./sdk-apps";
 import { SdkContext } from "./sdk-context";
 import { SdkNav } from "./sdk-nav";
@@ -12,4 +14,6 @@ export interface HostSDK {
   nav: SdkNav;
   apps: SdkApps;
   share: SdkShare;
+  api: SdkApi;
+  access: SdkAccess;
 }

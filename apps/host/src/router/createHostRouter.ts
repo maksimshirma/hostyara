@@ -1,6 +1,6 @@
 import { canonicalizeHidSegment } from "./hid";
 import { withGuardSuppressed } from "./historyGuard";
-import { HouseholdLookup } from "./loadHouseholds";
+import { HouseholdLookup } from "./householdLookup";
 import { parseRoute, Route } from "./route";
 import { createScrollRestoration } from "./scrollRestoration";
 
