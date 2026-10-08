@@ -14,6 +14,8 @@
     "e2e:full": "playwright test --config=playwright.full.config.ts"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@hostyara/contracts": "workspace:^",
     "@hostyara/event-bus": "workspace:^",
     "@hostyara/lifecycle": "workspace:^",
@@ -21,6 +23,9 @@
     "@hostyara/sdk": "workspace:^",
     "@hostyara/ui": "workspace:^",
     "@module-federation/runtime": "^2.9.0",
+    "@mui/icons-material": "^9.4.0",
+    "@mui/material": "^9.4.0",
+    "@tanstack/react-router": "1.170.41",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   }

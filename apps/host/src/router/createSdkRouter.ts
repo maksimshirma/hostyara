@@ -1,5 +1,7 @@
 import { Location as SdkLocation, SdkRouter } from "@hostyara/contracts";
-import { HostRouter } from "./createHostRouter";
+import { RouterHistory } from "@tanstack/react-router";
+import { routeForPath } from "./hostRoute";
+import { Route } from "./route";
 
 // IA §9: адреса, которые видит приложение, относительны basename;
 // наружу (link()) отдаются абсолютные.
@@ -14,14 +16,22 @@ function toAbsolutePath(basename: string, to: string): string {
   return `${basename}${suffix}`;
 }
 
-// Derived fresh from the host's current route rather than captured once at
-// mount time: a household switch (hid change) while the same app stays
-// mounted (T15) must not require a new SdkRouter instance, and re-deriving
-// here keeps location/navigate/link correct with no extra wiring on the
-// HostChrome side — every read already reflects window.location as of the
-// moment it's called.
-export function getLiveBasename(hostRouter: HostRouter, appId: string): string {
-  const route = hostRouter.getRoute();
+function currentRoute(history: RouterHistory): Route {
+  return routeForPath(history.location.pathname);
+}
+
+function ownsCurrentRoute(history: RouterHistory, appId: string): boolean {
+  const route = currentRoute(history);
+  return route.kind === "space" && route.area.kind === "app" && route.area.appId === appId;
+}
+
+// Derived fresh from the host history's current location rather than
+// captured once at mount time: a household switch (hid change) while the
+// same app stays mounted (T15) must not require a new SdkRouter instance.
+// The host history updates its location synchronously on every write, so
+// each read reflects a navigate() made just before it.
+export function getLiveBasename(history: RouterHistory, appId: string): string {
+  const route = currentRoute(history);
   if (route.kind === "space" && route.area.kind === "app" && route.area.appId === appId) {
     return route.area.basename;
   }
@@ -31,9 +41,9 @@ export function getLiveBasename(hostRouter: HostRouter, appId: string): string {
   return `/a/${appId}`;
 }
 
-function getRelativeLocation(hostRouter: HostRouter, appId: string): SdkLocation {
-  const basename = getLiveBasename(hostRouter, appId);
-  const location = hostRouter.getLocation();
+function getRelativeLocation(history: RouterHistory, appId: string): SdkLocation {
+  const basename = getLiveBasename(history, appId);
+  const { location } = history;
   return {
     pathname: toRelativePathname(basename, location.pathname),
     search: location.search,
@@ -41,22 +51,33 @@ function getRelativeLocation(hostRouter: HostRouter, appId: string): SdkLocation
   };
 }
 
-export function createSdkRouter(hostRouter: HostRouter, appId: string): SdkRouter {
+// sdk.router (IA §9) over the host history. App navigations go straight
+// into the history with the href as is — the app's query is never
+// re-serialized — and TanStack Router, subscribed to the same history,
+// only matches them.
+export function createSdkRouter(history: RouterHistory, appId: string): SdkRouter {
   return {
     get location() {
-      return getRelativeLocation(hostRouter, appId);
+      return getRelativeLocation(history, appId);
     },
     navigate(to, opts) {
-      hostRouter.navigate(toAbsolutePath(getLiveBasename(hostRouter, appId), to), opts);
+      // After Back/Forward away from the app it is still mounted until the
+      // shell unmounts it, and its framework router may react to the
+      // foreign location by navigating "home". Such a call must not
+      // rewrite the address the person just went back to.
+      if (!ownsCurrentRoute(history, appId)) return;
+      const href = toAbsolutePath(getLiveBasename(history, appId), to);
+      if (opts?.replace) history.replace(href);
+      else history.push(href);
     },
     back() {
-      window.history.back();
+      history.back();
     },
     subscribe(callback) {
-      return hostRouter.subscribe(() => callback(getRelativeLocation(hostRouter, appId)));
+      return history.subscribe(() => callback(getRelativeLocation(history, appId)));
     },
     link(to) {
-      return toAbsolutePath(getLiveBasename(hostRouter, appId), to);
+      return toAbsolutePath(getLiveBasename(history, appId), to);
     },
   };
 }

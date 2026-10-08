@@ -75,6 +75,10 @@ export interface Location {
   didn't cause (deep links, dock clicks, household switches). Always
   unsubscribe in `unmount` — see [app-module.md](./app-module.md)'s
   idempotency rules.
+- Once the current address no longer belongs to your app (Back/Forward
+  into another app, a shell page) your app is about to be unmounted, and
+  `navigate` is ignored — a framework router reacting to the foreign
+  location can't rewrite where the person just went.
 - There is no `dispose`/`destroy` on the router adapter — the unsubscribe
   function `subscribe` returns is the only cleanup you need.
 
@@ -100,9 +104,21 @@ export interface Crumb {
 ```
 
 Lets your app contribute to the host's chrome (breadcrumb trail, page
-title) instead of rendering its own. In the current host implementation
-both are no-ops (`HostChrome.tsx`'s `buildSdk` wires them to `() => {}`) —
-the interface exists and is safe to call, but nothing visible happens yet.
+title) instead of rendering its own (IA §8).
+
+- The shell draws the first links itself — the household and your app's
+  name (linking to your app's root). `setBreadcrumbs` gives **only the tail
+  after them**, e.g. `[{ label: "Паста карбонара" }]` on a recipe screen;
+  `[]` on your root.
+- `href` is a path **inside your app** (`"/collections/7"`), resolved
+  against your basename like `navigate`. Anything that doesn't start with a
+  single `/` is shown as plain text, never as a link. The last crumb is
+  always plain text.
+- `setTitle` sets the page title (`document.title` becomes
+  `<title> — Хостяра`); without it the last crumb is used.
+- Republish on every screen change — the host clears your trail and title
+  when your app is mounted or unloaded, and ignores calls from an app that
+  is no longer the one open.
 
 ## `apps`
 

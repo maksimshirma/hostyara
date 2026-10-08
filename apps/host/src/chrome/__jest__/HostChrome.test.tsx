@@ -1,5 +1,4 @@
-import { StrictMode } from "react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const initMock = jest.fn();
@@ -13,15 +12,17 @@ jest.mock("@module-federation/runtime", () => ({
 }));
 
 import { HostSDK } from "@hostyara/contracts";
-import { HostChrome } from "../HostChrome";
 import { createFakeShellServices, FULL_ACCESS } from "../../testing/fixtures";
+import { renderShell } from "../../testing/renderShell";
 
 const fakeAppModule = { mount: jest.fn(), unmount: jest.fn() };
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useRealTimers();
-  window.history.replaceState(null, "", "/");
+  // Canonical household address: canonicalization itself is a route guard
+  // (router/redirectRules.ts), outside HostChrome.
+  window.history.replaceState(null, "", "/h/demo-semya-ivanovyh");
   global.fetch = jest.fn(() =>
     Promise.resolve({ text: () => Promise.resolve("") }),
   ) as unknown as typeof fetch;
@@ -32,23 +33,17 @@ beforeEach(() => {
 });
 
 describe("HostChrome", () => {
-  it("renders the dock and slot before any remote loads", () => {
-    render(<HostChrome {...createFakeShellServices()} />);
+  it("renders the dock and slot before any remote loads", async () => {
+    await renderShell(createFakeShellServices());
 
     expect(screen.getByRole("link", { name: "Рецепты" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Бюджет" })).toBeInTheDocument();
     expect(loadRemoteMock).not.toHaveBeenCalled();
   });
 
-  it("redirects a bare / to the default household's home", () => {
-    render(<HostChrome {...createFakeShellServices()} />);
-
-    expect(window.location.pathname).toBe("/h/demo-semya-ivanovyh");
-  });
-
   it("loads and mounts an app when its dock link is clicked, without a page reload", async () => {
     loadRemoteMock.mockResolvedValue(fakeAppModule);
-    render(<HostChrome {...createFakeShellServices()} />);
+    await renderShell(createFakeShellServices());
 
     await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
 
@@ -66,7 +61,7 @@ describe("HostChrome", () => {
       grants: { recipes: "view" },
       permissions: { recipes: ["storage.own"] },
     });
-    render(<HostChrome {...services} />);
+    await renderShell(services);
 
     await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
     const sdk = fakeAppModule.mount.mock.calls[0][1] as HostSDK;
@@ -84,7 +79,7 @@ describe("HostChrome", () => {
   it("mounts the app directly from a cold-started deep link, without clicking the dock", async () => {
     window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/budget");
     loadRemoteMock.mockResolvedValue(fakeAppModule);
-    render(<HostChrome {...createFakeShellServices()} />);
+    await renderShell(createFakeShellServices());
 
     await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
     await waitFor(() =>
@@ -95,11 +90,7 @@ describe("HostChrome", () => {
   it("mounts exactly once under StrictMode's double-invoked effects", async () => {
     window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/budget");
     loadRemoteMock.mockResolvedValue(fakeAppModule);
-    render(
-      <StrictMode>
-        <HostChrome {...createFakeShellServices()} />
-      </StrictMode>,
-    );
+    await renderShell(createFakeShellServices(), { strictMode: true });
 
     await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalled());
     // Give any superseded concurrent mount a chance to also land before
@@ -107,16 +98,9 @@ describe("HostChrome", () => {
     await waitFor(() => expect(document.querySelectorAll("[data-app]").length).toBe(1));
   });
 
-  it("canonicalizes a stale hid tail on cold start", () => {
-    window.history.replaceState(null, "", "/h/demo-nasha-kvartira/a/recipes");
-    render(<HostChrome {...createFakeShellServices()} />);
-
-    expect(window.location.pathname).toBe("/h/demo-semya-ivanovyh/a/recipes");
-  });
-
   it("shows a not-installed state for a deep link to an unregistered appId, without touching the loader", async () => {
     window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/does-not-exist");
-    render(<HostChrome {...createFakeShellServices()} />);
+    await renderShell(createFakeShellServices());
 
     expect(
       await screen.findByText("Приложение «does-not-exist» не подключено"),
@@ -130,7 +114,7 @@ describe("HostChrome", () => {
   it("shows a timeout state in the slot without crashing the chrome", async () => {
     jest.useFakeTimers();
     loadRemoteMock.mockReturnValue(new Promise(() => {}));
-    render(<HostChrome {...createFakeShellServices()} />);
+    await renderShell(createFakeShellServices());
 
     await userEvent
       .setup({ advanceTimers: jest.advanceTimersByTime })
@@ -144,7 +128,7 @@ describe("HostChrome", () => {
 
   it("delivers a hid change to the mounted app via context/basename, without remounting (T15)", async () => {
     loadRemoteMock.mockResolvedValue(fakeAppModule);
-    render(<HostChrome {...createFakeShellServices()} />);
+    await renderShell(createFakeShellServices());
 
     await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
     await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
@@ -171,7 +155,7 @@ describe("HostChrome", () => {
 
   it("remounts when switching away to another app and back, even to a previously-open one", async () => {
     loadRemoteMock.mockResolvedValue(fakeAppModule);
-    render(<HostChrome {...createFakeShellServices()} />);
+    await renderShell(createFakeShellServices());
 
     await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
     await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
@@ -184,10 +168,73 @@ describe("HostChrome", () => {
     expect(fakeAppModule.unmount).toHaveBeenCalledTimes(2);
   });
 
+  it("unloads the open app and shows the shell page when leaving the app area", async () => {
+    loadRemoteMock.mockResolvedValue(fakeAppModule);
+    await renderShell(createFakeShellServices());
+
+    await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
+    await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByRole("link", { name: "Поиск" }));
+
+    await waitFor(() => expect(fakeAppModule.unmount).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("heading", { level: 1, name: "Поиск" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/h/demo-semya-ivanovyh/search");
+  });
+
+  it("does not mount an app whose load finishes after the person left it", async () => {
+    let finishLoad: (module: typeof fakeAppModule) => void = () => {};
+    loadRemoteMock.mockReturnValue(new Promise((resolve) => (finishLoad = resolve)));
+    await renderShell(createFakeShellServices());
+
+    await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
+    await userEvent.click(screen.getByRole("link", { name: "Дом" }));
+    await act(async () => finishLoad(fakeAppModule));
+
+    expect(fakeAppModule.mount).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { level: 1, name: "Дом" })).toBeInTheDocument();
+  });
+
+  it("shows the app's published breadcrumbs and title after the shell's own links", async () => {
+    window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/recipes/r/8421");
+    loadRemoteMock.mockResolvedValue(fakeAppModule);
+    await renderShell(createFakeShellServices());
+    await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
+    const sdk = fakeAppModule.mount.mock.calls[0][1] as HostSDK;
+
+    act(() => {
+      sdk.nav.setBreadcrumbs([{ label: "Паста карбонара" }]);
+      sdk.nav.setTitle("Паста карбонара");
+    });
+
+    const trail = screen.getByRole("navigation", { name: "Хлебные крошки" });
+    expect(within(trail).getByRole("link", { name: "Семья Ивановых" })).toHaveAttribute(
+      "href",
+      "/h/demo-semya-ivanovyh",
+    );
+    expect(within(trail).getByRole("link", { name: "Рецепты" })).toHaveAttribute(
+      "href",
+      "/h/demo-semya-ivanovyh/a/recipes",
+    );
+    expect(within(trail).getByText("Паста карбонара")).toHaveAttribute("aria-current", "page");
+    expect(document.title).toBe("Паста карбонара — Хостяра");
+
+    await userEvent.click(within(trail).getByRole("link", { name: "Семья Ивановых" }));
+    expect(window.location.pathname).toBe("/h/demo-semya-ivanovyh");
+    expect(screen.getByRole("navigation", { name: "Хлебные крошки" })).toHaveTextContent(
+      /^Семья Ивановых$/,
+    );
+    expect(document.title).toBe("Семья Ивановых — Хостяра");
+
+    // The unloaded app can no longer write into the trail.
+    act(() => sdk.nav.setBreadcrumbs([{ label: "Поздно" }]));
+    expect(screen.queryByText("Поздно")).not.toBeInTheDocument();
+  });
+
   it("shows a load-failed state and recovers via the retry button", async () => {
     loadRemoteMock.mockRejectedValueOnce(new Error("network down"));
     loadRemoteMock.mockResolvedValueOnce(fakeAppModule);
-    render(<HostChrome {...createFakeShellServices()} />);
+    await renderShell(createFakeShellServices());
 
     await userEvent.click(screen.getByRole("link", { name: "Рецепты" }));
     expect(await screen.findByText(/network down/)).toBeInTheDocument();
@@ -212,7 +259,7 @@ describe("HostChrome", () => {
     it("does not load an app without a grant and offers to request access", async () => {
       window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/recipes");
       const services = createFakeShellServices(NO_GRANT);
-      render(<HostChrome {...shellProps(services)} />);
+      await renderShell(shellProps(services));
 
       expect(await screen.findByText("У вас нет доступа к «Рецепты»")).toBeInTheDocument();
       expect(loadRemoteMock).not.toHaveBeenCalled();
@@ -229,17 +276,15 @@ describe("HostChrome", () => {
 
     it("hides apps that are not installed and refuses to open them", async () => {
       window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/budget");
-      render(
-        <HostChrome
-          {...shellProps(
-            createFakeShellServices({
-              role: "owner",
-              installedApps: ["recipes"],
-              grants: { recipes: "edit" },
-              permissions: {},
-            }),
-          )}
-        />,
+      await renderShell(
+        shellProps(
+          createFakeShellServices({
+            role: "owner",
+            installedApps: ["recipes"],
+            grants: { recipes: "edit" },
+            permissions: {},
+          }),
+        ),
       );
 
       expect(await screen.findByText("Приложение «Бюджет» не подключено")).toBeInTheDocument();
@@ -251,7 +296,7 @@ describe("HostChrome", () => {
       window.history.replaceState(null, "", "/h/demo-semya-ivanovyh/a/recipes");
       loadRemoteMock.mockResolvedValue(fakeAppModule);
       const services = createFakeShellServices();
-      render(<HostChrome {...shellProps(services)} />);
+      await renderShell(shellProps(services));
       await waitFor(() => expect(fakeAppModule.mount).toHaveBeenCalledTimes(1));
 
       await act(() => services.changeAccess(NO_GRANT));
@@ -267,7 +312,7 @@ describe("HostChrome", () => {
 
     it("shows the signed-in person and logs out", async () => {
       const services = createFakeShellServices();
-      render(<HostChrome {...shellProps(services)} />);
+      await renderShell(shellProps(services));
 
       expect(screen.getByText("Демо")).toBeInTheDocument();
       await userEvent.click(screen.getByRole("button", { name: "Выйти" }));

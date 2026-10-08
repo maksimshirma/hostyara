@@ -1,69 +1,30 @@
-import { buildAppPath, computeBasename, parseRoute, RESERVED_SPACE_SEGMENTS } from "../route";
+import { buildAppPath, computeBasename, RESERVED_ROOT_SEGMENTS, routeZone } from "../route";
+import { routeForPath } from "../hostRoute";
 
-describe("parseRoute", () => {
-  it("parses the canonical app path with a slugged hid tail", () => {
-    const route = parseRoute("/h/f3k2xp-semya-ivanovyh/a/recipes/r/8421/pasta-carbonara");
-
-    expect(route).toEqual({
-      kind: "space",
-      hid: "f3k2xp",
-      hidSegment: "f3k2xp-semya-ivanovyh",
-      area: {
-        kind: "app",
-        appId: "recipes",
-        appPath: "/r/8421/pasta-carbonara",
-        basename: "/h/f3k2xp-semya-ivanovyh/a/recipes",
-      },
-    });
+describe("routeZone", () => {
+  it.each<[string, string]>([
+    ["/login", "public"],
+    ["/signup", "public"],
+    ["/invite/t", "public"],
+    ["/s/t", "public"],
+    ["/nowhere", "public"],
+    ["/", "personal"],
+    ["/account", "personal"],
+    ["/spaces/new", "personal"],
+    ["/h/f3k2xp", "space"],
+    ["/h/f3k2xp/a/recipes", "space"],
+    ["/dev/health", "platform"],
+  ])("classifies %s as %s", (pathname, zone) => {
+    expect(routeZone(routeForPath(pathname))).toBe(zone);
   });
+});
 
-  it("parses a bare hid the same way as the tailed form", () => {
-    const route = parseRoute("/h/f3k2xp/a/recipes");
-
-    expect(route).toMatchObject({ hid: "f3k2xp", hidSegment: "f3k2xp" });
-  });
-
-  it("resolves the space home when no app segment follows the hid", () => {
-    expect(parseRoute("/h/f3k2xp-semya-ivanovyh")).toEqual({
-      kind: "space",
-      hid: "f3k2xp",
-      hidSegment: "f3k2xp-semya-ivanovyh",
-      area: { kind: "home" },
-    });
-  });
-
-  it.each(["catalog", "inbox", "search", "settings"])(
-    "resolves the reserved %s area instead of treating it as an appId",
-    (segment) => {
-      const route = parseRoute(`/h/f3k2xp/${segment}`);
-      expect(route).toEqual({
-        kind: "space",
-        hid: "f3k2xp",
-        hidSegment: "f3k2xp",
-        area: { kind: segment },
-      });
-    },
-  );
-
-  it("never resolves a reserved segment as an app area", () => {
-    for (const segment of RESERVED_SPACE_SEGMENTS) {
-      const route = parseRoute(`/h/f3k2xp/${segment}`);
-      const isAppArea = route.kind === "space" && route.area.kind === "app";
-      expect(isAppArea).toBe(false);
+describe("RESERVED_ROOT_SEGMENTS", () => {
+  // IA инвариант 6: корень делится с языковыми кодами маркетинга.
+  it("never matches the shape of a language code", () => {
+    for (const segment of RESERVED_ROOT_SEGMENTS) {
+      expect(segment).not.toMatch(/^[a-z]{2}(-[a-z]{2})?$/);
     }
-  });
-
-  it("returns not-found for /a/:appId without an app id", () => {
-    expect(parseRoute("/h/f3k2xp/a")).toEqual({ kind: "not-found" });
-  });
-
-  it("returns not-found for an unrecognized area", () => {
-    expect(parseRoute("/h/f3k2xp/something-else")).toEqual({ kind: "not-found" });
-  });
-
-  it("returns not-found outside the /h/:hid scheme", () => {
-    expect(parseRoute("/")).toEqual({ kind: "not-found" });
-    expect(parseRoute("/account")).toEqual({ kind: "not-found" });
   });
 });
 

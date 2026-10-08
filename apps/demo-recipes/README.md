@@ -45,3 +45,17 @@ to the app's own backend (`/ping`) through the host and the BFF, showing the
 (`recipes` or `recipes-iframe`) from `sdk.basename` (`src/sdkContext.tsx`), so
 the same code works under both transports. Without a registered backend (or
 standalone) it shows the `SdkApiError` code instead.
+
+## Breadcrumbs
+
+The screens publish their part of the host's breadcrumb trail through
+`sdk.nav`: the recipe screen adds `Рецепт №<id>` after the shell's
+"household / Рецепты" and sets the page title; the list clears the tail.
+
+```tsx
+const sdk = useSdk();
+useEffect(() => {
+  sdk.nav.setBreadcrumbs([{ label: `Рецепт №${id}` }]);
+  sdk.nav.setTitle(`Рецепт №${id}`);
+}, [sdk, id]);
+```

@@ -47,6 +47,26 @@ See [docs/demo-script.md](../../docs/demo-script.md) at the repo root for
 a guided walkthrough of what the host actually does (cross-app navigation,
 style isolation, remote failure isolation, the `?_remote=` override).
 
+## UI and theme (`src/theme/`)
+
+The host chrome is built with [MUI](https://mui.com/material-ui/) (v9,
+Emotion). `AppTheme` is a port of the `shared-theme` from MUI's templates
+with colours, font and radius taken from `packages/ui` design tokens
+(`src/theme/tokens.ts` mirrors `tokens.css`; a unit test keeps them in sync).
+Light/dark/system mode goes through MUI's `useColorScheme`
+(`ColorModeIconDropdown`): it writes `data-theme` on `<html>` — the same
+attribute `tokens.css` switches on — and stores the choice in localStorage
+under `theme`. MUI is used only by the host; remote apps keep styling
+themselves with the tokens.
+
+```tsx
+import { AppTheme, ColorModeIconDropdown } from "./theme";
+
+<AppTheme>
+  <ColorModeIconDropdown />
+</AppTheme>;
+```
+
 ## Backend access (`src/api/`)
 
 The host is the only code that talks to the BFF (`apps/bff`); apps get
@@ -66,19 +86,61 @@ The host is the only code that talks to the BFF (`apps/bff`); apps get
 
 ## Session and access (`src/session/`, `src/chrome/`)
 
-- `SessionGate` renders nothing of the shell until `/auth/me` confirms a
-  session; otherwise it shows login/registration, the 2FA code step, or
-  "create a household". Any `unauthenticated` answer from the BFF — including
-  one caused by an app's `sdk.api` call — and the SSE stream's
-  `session.ended` bring the login screen back; the URL is kept.
-- `HostChrome` takes the user and households from the gate. An app is mounted
-  only when `decideAppAccess` (`chrome/appAccess.ts`) allows it — installed in
+- Routing is [TanStack Router](https://tanstack.com/router) over the host's
+  own history (`src/router/`, see `docs/routing.md`). `SessionGate` creates
+  both, passes the session to the router context and renders nothing of the
+  shell until `/auth/me` confirms a session; session steps without an
+  address (2FA, "create a household", "service unavailable") replace the
+  matched page. Address rules live in the pure `decideRouteRedirect`
+  (`router/redirectRules.ts`), run by the root route's `beforeLoad`: without
+  a session every non-public address goes to
+  `/login?_from=<original address>`; after signing in the person returns to
+  `_from` (same-origin paths only) or their first household; `/` goes to the
+  first household; a stale household address goes to its canonical form; a
+  bare `settings` goes to `settings/general`. Explicit
+  logout lands on a plain `/login`. Any `unauthenticated` answer from the
+  BFF — including one caused by an app's `sdk.api` call — and the SSE
+  stream's `session.ended` bring the login screen back with `_from` set, so
+  signing in again returns to the same place.
+- Screens before the shell live in `src/pages/auth/` (MUI sign-in/sign-up
+  templates on a shared `AuthLayout`): `SignInPage` on `/login`,
+  `SignUpPage` on `/signup`, plus the 2FA step, "create a household" and
+  "service unavailable". Field checks are the pure `validateSignIn` /
+  `validateSignUp`; BFF refusals are shown via `FAILURE_TEXT`.
+- `HostChrome` is the layout of the signed-in shell routes; the app slot
+  (`chrome/AppSlot.tsx`) is the component of `/h/$hid/a/$appId/$` and
+  shares the registry, loader and mount manager with it (`ShellServices`).
+  An app is mounted only when `decideAppAccess` (`chrome/appAccess.ts`) allows it — installed in
   the household and granted to the person. Otherwise the slot says why: "not
   connected", "no access" with buttons to request view/edit
   (`POST /identity/grant-requests`), "no access to this household", or a
   retryable "could not check access". When access is revoked while an app is
   open, it is unmounted on the spot (IA 13.7); the dock lists only installed
-  apps.
+  apps. Leaving the app area unmounts the slot, which unloads the app.
+- The chrome layout (`src/chrome/shell/`) follows MUI's dashboard template:
+  `ShellLayout` = a permanent side menu on desktop (household switcher,
+  shell sections, the app dock, settings, the person with a logout button)
+  and an `AppNavbar` with a slide-in menu below the `md` breakpoint, plus a
+  `Header` for breadcrumbs. Menu items come from the pure `buildShellNav` as
+  typed link options and render as TanStack links (`createLink`) — real
+  `<a href>`, so "open in new tab" keeps working.
+- Breadcrumbs (IA §8): the pure `buildBreadcrumbs` gives the shell's own
+  links (household, section or app); the open app adds the tail through
+  `sdk.nav.setBreadcrumbs` / `setTitle`, which `buildSdk` writes into an
+  `appNavStore` bound to the mounted app — calls from an app that is no
+  longer open are ignored. `NavbarBreadcrumbs` renders the trail in the
+  header and `document.title` follows it (`<page> — Хостяра`).
+
+## Pages (`src/pages/`)
+
+Every shell route from `docs/routing.md` has a page; the screens are
+attached to the routes in `src/app/routeComponents.tsx`. Titles come from
+the pure `shellPageTitle`; most pages are still `PageStub`s ("Раздел в
+разработке"). Layout routes decide where a page is drawn: household,
+personal and platform pages sit inside `HostChrome`; public pages
+(`/invite/:token`, `/s/:token`) and a 404 outside `/h/` use the minimal
+`PublicLayout` — no menu, no breadcrumbs, a sign-up CTA for anonymous
+visitors.
 
 ## Full-stack e2e (`e2e-full/`)
 

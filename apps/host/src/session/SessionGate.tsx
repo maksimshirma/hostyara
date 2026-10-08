@@ -1,25 +1,26 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { RouterProvider as TanStackRouterProvider } from "@tanstack/react-router";
 import { User } from "@hostyara/contracts";
 import { AccessEventSource, createAccessTracker } from "../api/accessTracker";
 import { createBffClient } from "../api/bffClient";
-import { HostChrome } from "../chrome/HostChrome";
-import { Household } from "../router";
-import { AuthFailure, createSessionApi, LoginOutcome } from "./sessionApi";
+import { attachRouteComponents } from "../app/routeComponents";
 import {
-  CreateHouseholdScreen,
-  CredentialsScreen,
-  TwoFactorScreen,
-  UnavailableScreen,
-} from "./SessionScreens";
-
-type SessionState =
-  | { kind: "checking" }
-  | { kind: "signed-out"; notice: string | null }
-  | { kind: "two-factor" }
-  | { kind: "signed-in"; user: User; households: Household[] }
-  | { kind: "unavailable" };
-
-const SESSION_ENDED_NOTICE = "Сессия завершена — войдите снова";
+  CreateHouseholdPage,
+  TwoFactorPage,
+  UnavailablePage,
+} from "../pages/auth/SessionStepPages";
+import { createHostHistory, routeForPath, useHistoryLocation } from "../router";
+import { createAppRouter } from "../router/appRouter";
+import { decideRouteRedirect, RedirectSession } from "../router/redirectRules";
+import {
+  GateScreen,
+  GateScreenProvider,
+  OUTLET,
+  SessionProvider,
+  SessionState,
+  SessionView,
+} from "./SessionContext";
+import { AuthFailure, createSessionApi, LoginOutcome } from "./sessionApi";
 
 export interface SessionGateProps {
   // Test seams; default to the browser's own.
@@ -27,19 +28,41 @@ export interface SessionGateProps {
   createEventSource?: (url: string) => AccessEventSource;
 }
 
-// The host owns the session (CLAUDE.md, «Architectural Boundaries»): nothing
-// below this component renders until /auth/me confirms one. Any BFF answer
-// of `unauthenticated` — from the shell or from an app's sdk.api — and the
-// SSE stream's `session.ended` bring the login screen back; the URL is kept,
-// so signing in again returns to the same place.
+function toRedirectSession(state: SessionState): RedirectSession {
+  switch (state.kind) {
+    case "signed-out":
+      return { kind: "signed-out", keepReturnAddress: state.reason !== "logout" };
+    case "signed-in":
+      return { kind: "signed-in", households: state.households };
+    default:
+      return { kind: "pending" };
+  }
+}
+
+// The host owns the session and top-level routing (CLAUDE.md, «Architectural
+// Boundaries»): nothing below this component renders until /auth/me confirms
+// a session. Without one, any non-public address is sent to /login with the
+// original address in `_from`; signing in returns there. Any BFF answer of
+// `unauthenticated` — from the shell or from an app's sdk.api — and the SSE
+// stream's `session.ended` do the same.
 export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
   const [state, setState] = useState<SessionState>({ kind: "checking" });
+  const [history] = useState(() => createHostHistory());
+  const [appRouter] = useState(() => {
+    attachRouteComponents();
+    return createAppRouter(history);
+  });
+  const location = useHistoryLocation(history);
+  const route = useMemo(() => routeForPath(location.pathname), [location.pathname]);
+  const session = useMemo(() => toRedirectSession(state), [state]);
+  const routerContext = useMemo(() => ({ session }), [session]);
+  // TanStack performs the redirect (root beforeLoad); until it lands, don't
+  // render the screen the person is about to be taken away from.
+  const redirect = decideRouteRedirect(route, location, session);
   const signOutLocally = useCallback(
     () =>
       setState((current) =>
-        current.kind === "signed-in"
-          ? { kind: "signed-out", notice: SESSION_ENDED_NOTICE }
-          : current,
+        current.kind === "signed-in" ? { kind: "signed-out", reason: "expired" } : current,
       ),
     [],
   );
@@ -50,6 +73,12 @@ export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
   const [sessionApi] = useState(() => createSessionApi(bff));
 
   useEffect(() => () => accessTracker.close(), [accessTracker]);
+
+  // Re-runs the route guards with the new session (sign-in, sign-out,
+  // households loaded or created).
+  useEffect(() => {
+    void appRouter.invalidate();
+  }, [appRouter, session]);
 
   const enter = useCallback(
     async (user: User) => {
@@ -67,7 +96,7 @@ export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
     try {
       const user = await sessionApi.fetchCurrentUser();
       if (user) await enter(user);
-      else setState({ kind: "signed-out", notice: null });
+      else setState({ kind: "signed-out", reason: "initial" });
     } catch {
       setState({ kind: "unavailable" });
     }
@@ -88,42 +117,55 @@ export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
     try {
       await sessionApi.logout();
     } finally {
-      setState({ kind: "signed-out", notice: null });
+      setState({ kind: "signed-out", reason: "logout" });
     }
   }
 
-  switch (state.kind) {
-    case "checking":
-      return null;
-    case "unavailable":
-      return <UnavailableScreen onRetry={() => void restore()} />;
-    case "signed-out":
-      return (
-        <CredentialsScreen
-          notice={state.notice}
-          onLogin={async (email, password) => complete(await sessionApi.login(email, password))}
-          onSignUp={async (name, email, password) =>
-            complete(await sessionApi.signUp(name, email, password))
-          }
-        />
-      );
-    case "two-factor":
-      return (
-        <TwoFactorScreen
-          onVerify={async (code) => {
-            const outcome = await sessionApi.verifyTwoFactor(code);
-            if (outcome.kind === "failed" && outcome.reason === "expired") {
-              setState({ kind: "signed-out", notice: null });
-            }
-            return complete(outcome);
-          }}
-          onCancel={() => setState({ kind: "signed-out", notice: null })}
-        />
-      );
-    case "signed-in":
-      if (state.households.length === 0) {
+  const view: SessionView = {
+    state,
+    bff,
+    accessTracker,
+    login: async (email, password) => complete(await sessionApi.login(email, password)),
+    signUp: async (name, email, password) =>
+      complete(await sessionApi.signUp(name, email, password)),
+    logout: () => void logout(),
+  };
+
+  return (
+    <SessionProvider value={view}>
+      <GateScreenProvider value={redirect ? null : gateScreen()}>
+        <TanStackRouterProvider router={appRouter} context={routerContext} />
+      </GateScreenProvider>
+    </SessionProvider>
+  );
+
+  // Session steps without an address of their own; OUTLET lets the matched
+  // route draw the page.
+  function gateScreen(): GateScreen {
+    switch (state.kind) {
+      case "checking":
+        return null;
+      case "unavailable":
+        return <UnavailablePage onRetry={() => void restore()} />;
+      case "two-factor":
         return (
-          <CreateHouseholdScreen
+          <TwoFactorPage
+            onVerify={async (code) => {
+              const outcome = await sessionApi.verifyTwoFactor(code);
+              if (outcome.kind === "failed" && outcome.reason === "expired") {
+                setState({ kind: "signed-out", reason: "initial" });
+              }
+              return complete(outcome);
+            }}
+            onCancel={() => setState({ kind: "signed-out", reason: "initial" })}
+          />
+        );
+      case "signed-in": {
+        // An invitation or a shared link opens even before the first household.
+        const isPublicPage = route.kind === "invite" || route.kind === "share";
+        if (state.households.length > 0 || isPublicPage) return OUTLET;
+        return (
+          <CreateHouseholdPage
             onCreate={async (name) => {
               try {
                 const household = await sessionApi.createHousehold(name);
@@ -136,14 +178,8 @@ export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
           />
         );
       }
-      return (
-        <HostChrome
-          bff={bff}
-          accessTracker={accessTracker}
-          user={state.user}
-          households={state.households}
-          onLogout={() => void logout()}
-        />
-      );
+      case "signed-out":
+        return OUTLET;
+    }
   }
 }

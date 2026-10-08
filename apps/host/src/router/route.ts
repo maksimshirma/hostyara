@@ -1,28 +1,79 @@
-import { resolveHid } from "./hid";
+// IA §3: корневые сегменты приложения. Ни один не может совпадать по форме
+// с языковым кодом маркетинга (инвариант 6) — проверяется тестом.
+export const RESERVED_ROOT_SEGMENTS = [
+  "h",
+  "s",
+  "account",
+  "spaces",
+  "login",
+  "signup",
+  "logout",
+  "invite",
+  "dev",
+  ".well-known",
+] as const;
 
 // IA §3: сегменты первого уровня внутри пространства, зарезервированные
 // шеллом. "a" открывает зону монтирования подприложений; appId не может
 // совпасть ни с одним из них, потому что appId всегда стоит после "a/".
 export const RESERVED_SPACE_SEGMENTS = ["a", "catalog", "inbox", "search", "settings"] as const;
 
-const AREA_SEGMENTS = ["catalog", "inbox", "search", "settings"] as const;
-type AreaSegment = (typeof AREA_SEGMENTS)[number];
+export const SETTINGS_SECTIONS = [
+  "general",
+  "members",
+  "apps",
+  "notifications",
+  "shared",
+  "data",
+] as const;
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
-function isAreaSegment(value: string): value is AreaSegment {
-  return (AREA_SEGMENTS as readonly string[]).includes(value);
-}
+export const ACCOUNT_SECTIONS = ["profile", "security", "sessions"] as const;
+export type AccountSection = (typeof ACCOUNT_SECTIONS)[number];
 
 export type SpaceArea =
   | { kind: "app"; appId: string; appPath: string; basename: string }
-  | { kind: AreaSegment }
-  | { kind: "home" };
+  | { kind: "home" }
+  | { kind: "search" }
+  | { kind: "inbox"; eventId?: string }
+  | { kind: "catalog"; appId?: string }
+  // section === null — голый /settings, который редиректится на general.
+  | { kind: "settings"; section: SettingsSection | null; itemId?: string };
 
 export type Route =
+  | { kind: "root" }
+  | { kind: "login" }
+  | { kind: "signup" }
+  | { kind: "invite"; token: string }
+  | { kind: "share"; token: string; slug?: string }
+  | { kind: "account"; section: AccountSection }
+  | { kind: "spaces"; section: "list" | "new" }
   | { kind: "space"; hid: string; hidSegment: string; area: SpaceArea }
+  | { kind: "dev"; section: "registry"; appId?: string }
+  | { kind: "dev"; section: "health" }
   | { kind: "not-found" };
 
-function splitSegments(pathname: string): string[] {
-  return pathname.split("/").filter(Boolean);
+// public — доступно без сессии; personal — аккаунт человека вне
+// пространства; space — внутри /h/:hid; platform — разработка и эксплуатация.
+export type RouteZone = "public" | "personal" | "space" | "platform";
+
+export function routeZone(route: Route): RouteZone {
+  switch (route.kind) {
+    case "login":
+    case "signup":
+    case "invite":
+    case "share":
+    case "not-found":
+      return "public";
+    case "space":
+      return "space";
+    case "dev":
+      return "platform";
+    case "root":
+    case "account":
+    case "spaces":
+      return "personal";
+  }
 }
 
 export function computeBasename(hidSegment: string, appId: string): string {
@@ -32,39 +83,4 @@ export function computeBasename(hidSegment: string, appId: string): string {
 export function buildAppPath(hidSegment: string, appId: string, appPath = "/"): string {
   const suffix = appPath === "/" || appPath === "" ? "" : appPath;
   return `${computeBasename(hidSegment, appId)}${suffix}`;
-}
-
-// IA §2/§4: /h/:hid/a/:appId/* — всё до "a/:appId" принадлежит shell,
-// остальное подприложению.
-export function parseRoute(pathname: string): Route {
-  const segments = splitSegments(pathname);
-  if (segments[0] !== "h" || !segments[1]) {
-    return { kind: "not-found" };
-  }
-
-  const hidSegment = segments[1];
-  const hid = resolveHid(hidSegment);
-
-  if (segments.length === 2) {
-    return { kind: "space", hid, hidSegment, area: { kind: "home" } };
-  }
-
-  const next = segments[2];
-  if (next === "a") {
-    const appId = segments[3];
-    if (!appId) return { kind: "not-found" };
-    const appPath = `/${segments.slice(4).join("/")}`;
-    return {
-      kind: "space",
-      hid,
-      hidSegment,
-      area: { kind: "app", appId, appPath, basename: computeBasename(hidSegment, appId) },
-    };
-  }
-
-  if (isAreaSegment(next)) {
-    return { kind: "space", hid, hidSegment, area: { kind: next } };
-  }
-
-  return { kind: "not-found" };
 }

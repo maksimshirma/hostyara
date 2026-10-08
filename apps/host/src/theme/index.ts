@@ -1,3 +1,2 @@
-export { ThemeProvider, useTheme } from "./ThemeContext";
-export type { ResolvedTheme, ThemePreference } from "./themeStorage";
-export { THEME_STORAGE_KEY } from "./themeStorage";
+export { AppTheme, appTheme, THEME_STORAGE_KEY } from "./AppTheme";
+export { ColorModeIconDropdown } from "./ColorModeIconDropdown";
