@@ -1190,6 +1190,7 @@ __metadata:
     "@module-federation/runtime": "npm:^2.9.0"
     "@mui/icons-material": "npm:^9.4.0"
     "@mui/material": "npm:^9.4.0"
+    "@tanstack/react-router": "npm:1.170.41"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
   languageName: unknown
@@ -3227,6 +3228,60 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/history@npm:1.162.4":
+  version: 1.162.4
+  resolution: "@tanstack/history@npm:1.162.4"
+  checksum: 10c0/3a8bbe096e597f7945ac85f9da6b1bbd9f62c9df34c29526a3667189d715bb434fd077186333025a78ef6900adb943816cc58cc90b015527d4a916baedb09e44
+  languageName: node
+  linkType: hard
+
+"@tanstack/react-router@npm:1.170.41":
+  version: 1.170.41
+  resolution: "@tanstack/react-router@npm:1.170.41"
+  dependencies:
+    "@tanstack/history": "npm:1.162.4"
+    "@tanstack/react-store": "npm:^0.11.2"
+    "@tanstack/router-core": "npm:1.171.34"
+    isbot: "npm:^5.1.22"
+  peerDependencies:
+    react: ">=18.0.0 || >=19.0.0"
+    react-dom: ">=18.0.0 || >=19.0.0"
+  checksum: 10c0/38379f90199dbae07c73c0199508cec2524b60ffe9d0b91c46d674cb5c2a3392a223f9a2a0dda964687cfa9925dbff77a64a18cb7afe105ed25894444e313099
+  languageName: node
+  linkType: hard
+
+"@tanstack/react-store@npm:^0.11.2":
+  version: 0.11.2
+  resolution: "@tanstack/react-store@npm:0.11.2"
+  dependencies:
+    "@tanstack/store": "npm:0.11.2"
+    use-sync-external-store: "npm:^1.6.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/a755aa369c13824709ca5b29355ab7a72ba913d3561786f993412c8c375f36c54b20c0366bd406cf21b363b12e516a251a774ee7140479571b628e895448a93d
+  languageName: node
+  linkType: hard
+
+"@tanstack/router-core@npm:1.171.34":
+  version: 1.171.34
+  resolution: "@tanstack/router-core@npm:1.171.34"
+  dependencies:
+    "@tanstack/history": "npm:1.162.4"
+    cookie-es: "npm:^3.0.0"
+    seroval: "npm:^1.6.7"
+    seroval-plugins: "npm:^1.6.7"
+  checksum: 10c0/d1d0154f9979b892e21ef73293805bf96e1b0136147991f7687b67ffcf268cd40364295fc8f0f026e6f6ac375378959045a16b9b1d889180960f2fa9e4894ce2
+  languageName: node
+  linkType: hard
+
+"@tanstack/store@npm:0.11.2":
+  version: 0.11.2
+  resolution: "@tanstack/store@npm:0.11.2"
+  checksum: 10c0/5422149c853c16e642a0ddfb51c2b4a867a11516069d3b9647659212e9762b86d609144de6ac6ec099b0360c3b198d1243f613148d69c1028dee56382f0430cd
+  languageName: node
+  linkType: hard
+
 "@testing-library/dom@npm:^10.4.0, @testing-library/dom@npm:^10.4.1":
   version: 10.4.1
   resolution: "@testing-library/dom@npm:10.4.1"
@@ -4494,6 +4549,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cookie-es@npm:^3.0.0":
+  version: 3.1.1
+  resolution: "cookie-es@npm:3.1.1"
+  checksum: 10c0/62cf0c325cc547b52477b351e9b5d068b3ffc74f7d143cdf7af854648dd1015fca3aed1498b355365e24b0746333f0b15688ed3a535abecc5ed0a046ae956a84
+  languageName: node
+  linkType: hard
+
 "cookie@npm:^1.0.1":
   version: 1.1.1
   resolution: "cookie@npm:1.1.1"
@@ -5608,6 +5670,13 @@ __metadata:
   dependencies:
     is-inside-container: "npm:^1.0.0"
   checksum: 10c0/7e5023522bfb8f27de4de960b0d82c4a8146c0bddb186529a3616d78b5bbbfc19ef0c5fc60d0b3a3cc0bf95a415fbdedc18454310ea3049587c879b07ace5107
+  languageName: node
+  linkType: hard
+
+"isbot@npm:^5.1.22":
+  version: 5.2.2
+  resolution: "isbot@npm:5.2.2"
+  checksum: 10c0/df8356dd8745d7fe1922fc8df894bf5560fe959ad7826ac97311c430dc9c6dd628c8aab68d3e45769b50b61411bd4530d874aae07947f6cd04e25206566a7bb3
   languageName: node
   linkType: hard
 
@@ -7826,6 +7895,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"seroval-plugins@npm:^1.6.7":
+  version: 1.6.8
+  resolution: "seroval-plugins@npm:1.6.8"
+  peerDependencies:
+    seroval: ^1.0
+  checksum: 10c0/1510c7b977bc4e3b1a1dd2841e600ba555ac02e74a0ea0378a782dc821fb11b3578b288a4aed7a5ead9998d0a6a3f8f5ee94338a949902cbb86e11fcf0ec8949
+  languageName: node
+  linkType: hard
+
+"seroval@npm:^1.6.7":
+  version: 1.6.8
+  resolution: "seroval@npm:1.6.8"
+  checksum: 10c0/c65f4ca1bd712d89c70c86df41bedc8270ee33cc8365c867761a9fe6310ab3b8c0fc43a48f6c1cea3cf9b5cc362714e7325e5f9275407303e4c51dfcebeb98b2
+  languageName: node
+  linkType: hard
+
 "set-cookie-parser@npm:^2.6.0":
   version: 2.7.2
   resolution: "set-cookie-parser@npm:2.7.2"
@@ -8563,6 +8648,15 @@ __metadata:
   peerDependencies:
     react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
   checksum: 10c0/35e1179f872a53227bdf8a827f7911da4c37c0f4091c29b76b1e32473d1670ebe7bcd880b808b7549ba9a5605c233350f800ffab963ee4a4ee346ee983b6019b
+  languageName: node
+  linkType: hard
+
+"use-sync-external-store@npm:^1.6.0":
+  version: 1.7.0
+  resolution: "use-sync-external-store@npm:1.7.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/6bae7cb778ce611131ec830c4e469fbc2872acefc25d2e4cf1c28b8628690689770742a9f2f0642c95134f9c77041fee60f0352f81ca43f96643b0ed01774726
   languageName: node
   linkType: hard
 
