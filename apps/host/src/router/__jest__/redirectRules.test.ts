@@ -1,5 +1,5 @@
-import { parseRoute } from "../../router";
-import { decideRouteRedirect, readReturnAddress, RedirectSession } from "../decideRouteRedirect";
+import { routeForPath } from "../hostRoute";
+import { decideRouteRedirect, readReturnAddress, RedirectSession } from "../redirectRules";
 
 const HOUSEHOLDS = [{ hid: "f3k2xp", name: "Семья" }];
 const signedIn: RedirectSession = { kind: "signed-in", households: HOUSEHOLDS };
@@ -9,7 +9,7 @@ const loggedOut: RedirectSession = { kind: "signed-out", keepReturnAddress: fals
 function decide(href: string, session: RedirectSession): string | null {
   const url = new URL(href, "http://host.invalid");
   const location = { pathname: url.pathname, search: url.search, hash: url.hash };
-  return decideRouteRedirect(parseRoute(url.pathname), location, session);
+  return decideRouteRedirect(routeForPath(url.pathname), location, session);
 }
 
 describe("decideRouteRedirect", () => {
@@ -51,8 +51,8 @@ describe("decideRouteRedirect", () => {
     });
 
     it("leaves /login and /signup for the first household without a return address", () => {
-      expect(decide("/login", signedIn)).toBe("/h/f3k2xp");
-      expect(decide("/signup", signedIn)).toBe("/h/f3k2xp");
+      expect(decide("/login", signedIn)).toBe("/h/f3k2xp-semya");
+      expect(decide("/signup", signedIn)).toBe("/h/f3k2xp-semya");
     });
 
     it("leaves /signup for the root when there is no household yet", () => {
@@ -60,7 +60,7 @@ describe("decideRouteRedirect", () => {
     });
 
     it("sends the root to the first household", () => {
-      expect(decide("/", signedIn)).toBe("/h/f3k2xp");
+      expect(decide("/", signedIn)).toBe("/h/f3k2xp-semya");
       expect(decide("/", { kind: "signed-in", households: [] })).toBeNull();
     });
 
@@ -68,7 +68,16 @@ describe("decideRouteRedirect", () => {
       expect(decide("/h/f3k2xp-semya/settings", signedIn)).toBe("/h/f3k2xp-semya/settings/general");
     });
 
-    it.each(["/h/f3k2xp", "/h/f3k2xp/settings/members", "/account", "/invite/t"])(
+    it("rewrites a stale or bare household address to its canonical form", () => {
+      expect(decide("/h/f3k2xp/a/recipes?q=1#x", signedIn)).toBe("/h/f3k2xp-semya/a/recipes?q=1#x");
+      expect(decide("/h/f3k2xp-old-name/settings", signedIn)).toBe("/h/f3k2xp-semya/settings");
+    });
+
+    it("leaves an unknown household's address alone", () => {
+      expect(decide("/h/unknown-tail/search", signedIn)).toBeNull();
+    });
+
+    it.each(["/h/f3k2xp-semya", "/h/f3k2xp-semya/settings/members", "/account", "/invite/t"])(
       "keeps %s",
       (href) => {
         expect(decide(href, signedIn)).toBeNull();

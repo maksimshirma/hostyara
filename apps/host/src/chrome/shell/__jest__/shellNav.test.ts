@@ -1,5 +1,6 @@
-import { parseRoute } from "../../../router";
+import { routeForPath } from "../../../router";
 import { buildShellNav } from "../shellNav";
+import { hrefOf } from "../../../testing/hrefOf";
 
 const APPS = [
   { id: "recipes", name: "Рецепты" },
@@ -7,7 +8,7 @@ const APPS = [
 ];
 
 function selectedIds(pathname: string): string[] {
-  const nav = buildShellNav(parseRoute(pathname), "f3k2xp-semya", APPS);
+  const nav = buildShellNav(routeForPath(pathname), "f3k2xp-semya", APPS);
   return [...nav.sections, ...nav.apps, ...nav.secondary]
     .filter((item) => item.selected)
     .map((item) => item.id);
@@ -15,19 +16,21 @@ function selectedIds(pathname: string): string[] {
 
 describe("buildShellNav", () => {
   it("links every item into the given household", () => {
-    const nav = buildShellNav(parseRoute("/h/f3k2xp-semya"), "f3k2xp-semya", APPS);
+    const nav = buildShellNav(routeForPath("/h/f3k2xp-semya"), "f3k2xp-semya", APPS);
 
-    expect(nav.sections.map((item) => [item.label, item.href])).toEqual([
+    expect(nav.sections.map((item) => [item.label, hrefOf(item.link)])).toEqual([
       ["Дом", "/h/f3k2xp-semya"],
       ["Поиск", "/h/f3k2xp-semya/search"],
       ["Входящие", "/h/f3k2xp-semya/inbox"],
       ["Каталог", "/h/f3k2xp-semya/catalog"],
     ]);
-    expect(nav.apps.map((item) => [item.label, item.href])).toEqual([
+    expect(nav.apps.map((item) => [item.label, hrefOf(item.link)])).toEqual([
       ["Рецепты", "/h/f3k2xp-semya/a/recipes"],
       ["Бюджет", "/h/f3k2xp-semya/a/budget"],
     ]);
-    expect(nav.secondary.map((item) => item.href)).toEqual(["/h/f3k2xp-semya/settings/general"]);
+    expect(nav.secondary.map((item) => hrefOf(item.link))).toEqual([
+      "/h/f3k2xp-semya/settings/general",
+    ]);
   });
 
   it.each([

@@ -1,17 +1,14 @@
 import { ReactNode, useEffect, useState } from "react";
-import { createHostRouter, createHouseholdLookup, Household, RouterProvider } from "../router";
-import { DEMO_HOUSEHOLDS } from "./fixtures";
+import { RouterContextProvider } from "@tanstack/react-router";
+import { createHostHistory } from "../router";
+import { createAppRouter } from "../router/appRouter";
 
-// Stands in for SessionGate's router for components rendered on their own:
-// a host router over a fixed household list, attached like the real one.
-export function ShellRouter({
-  children,
-  households = DEMO_HOUSEHOLDS,
-}: {
-  children: ReactNode;
-  households?: Household[];
-}) {
-  const [router] = useState(() => createHostRouter(createHouseholdLookup(households)));
-  useEffect(() => router.attach(), [router]);
-  return <RouterProvider router={router}>{children}</RouterProvider>;
+// Router context for a component rendered on its own (unit tests,
+// Storybook): TanStack Router over a host history, as SessionGate sets it
+// up — without rendering the routes.
+export function ShellRouter({ children }: { children: ReactNode }) {
+  const [router] = useState(() => createAppRouter(createHostHistory()));
+  // RouterProvider would do this itself; RouterContextProvider doesn't.
+  useEffect(() => router.history.subscribe(() => void router.load()), [router]);
+  return <RouterContextProvider router={router}>{children}</RouterContextProvider>;
 }

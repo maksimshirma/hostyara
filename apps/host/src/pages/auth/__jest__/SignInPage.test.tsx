@@ -10,7 +10,7 @@ function renderSignIn(
   onLogin = jest.fn<ReturnType<OnLogin>, Parameters<OnLogin>>(async () => null),
   notice: string | null = null,
 ) {
-  render(<SignInPage notice={notice} signUpHref="/signup?_from=%2Fh%2Fx" onLogin={onLogin} />, {
+  render(<SignInPage notice={notice} returnAddress="/h/x" onLogin={onLogin} />, {
     wrapper: ShellRouter,
   });
   return onLogin;

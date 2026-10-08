@@ -9,7 +9,7 @@ type OnSignUp = (name: string, email: string, password: string) => Promise<AuthF
 function renderSignUp(
   onSignUp = jest.fn<ReturnType<OnSignUp>, Parameters<OnSignUp>>(async () => null),
 ) {
-  render(<SignUpPage signInHref="/login?_from=%2Fh%2Fx" onSignUp={onSignUp} />, {
+  render(<SignUpPage returnAddress="/h/x" onSignUp={onSignUp} />, {
     wrapper: ShellRouter,
   });
   return onSignUp;

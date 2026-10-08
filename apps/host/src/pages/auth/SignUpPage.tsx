@@ -13,11 +13,12 @@ import {
 } from "./validateCredentials";
 
 export interface SignUpPageProps {
-  signInHref: string;
+  // Исходный адрес (_from) передаётся между входом и регистрацией.
+  returnAddress?: string;
   onSignUp(name: string, email: string, password: string): Promise<AuthFailure | null>;
 }
 
-export function SignUpPage({ signInHref, onSignUp }: SignUpPageProps) {
+export function SignUpPage({ returnAddress, onSignUp }: SignUpPageProps) {
   const [errors, setErrors] = useState<CredentialsErrors>({});
   const { pending, failure, submit } = useSubmit(onSignUp);
 
@@ -70,7 +71,11 @@ export function SignUpPage({ signInHref, onSignUp }: SignUpPageProps) {
       </AuthForm>
       <Typography sx={{ textAlign: "center" }}>
         Уже есть аккаунт?{" "}
-        <RouterLink href={signInHref} variant="body2">
+        <RouterLink
+          to="/login"
+          search={returnAddress ? { _from: returnAddress } : {}}
+          variant="body2"
+        >
           Войти
         </RouterLink>
       </Typography>

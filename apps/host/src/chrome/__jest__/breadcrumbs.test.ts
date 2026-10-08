@@ -1,12 +1,20 @@
 import { Crumb } from "@hostyara/contracts";
-import { parseRoute } from "../../router";
+import { routeForPath } from "../../router";
 import { buildBreadcrumbs, formatDocumentTitle } from "../breadcrumbs";
+import { hrefOf } from "../../testing/hrefOf";
 
 const HOUSEHOLD = { hid: "demo", name: "Семья Ивановых" };
 const APP_NAMES: Record<string, string> = { recipes: "Рецепты" };
 
+// Links compared by the address they resolve to.
 function crumbs(pathname: string, appTrail: Crumb[] = []) {
-  return buildBreadcrumbs(parseRoute(pathname), {
+  return trail(pathname, appTrail).map(({ label, link }) =>
+    link === undefined ? { label } : { label, href: hrefOf(link) },
+  );
+}
+
+function trail(pathname: string, appTrail: Crumb[] = []) {
+  return buildBreadcrumbs(routeForPath(pathname), {
     household: pathname.startsWith("/h/") ? HOUSEHOLD : undefined,
     appName: (appId) => APP_NAMES[appId] ?? appId,
     appTrail,

@@ -90,6 +90,20 @@ describe("SessionGate", () => {
     expect(window.location.pathname).toBe("/h/demo-semya-ivanovyh");
   });
 
+  it("canonicalizes a stale household address on cold start, keeping the app tail", async () => {
+    window.history.replaceState(null, "", "/h/demo-nasha-kvartira/a/recipes?x=1");
+    setup({
+      "/auth/me": () => ({ status: 200, body: { userId: "u1", user: USER } }),
+      ...households,
+    });
+
+    await waitFor(() =>
+      expect(`${window.location.pathname}${window.location.search}`).toBe(
+        "/h/demo-semya-ivanovyh/a/recipes?x=1",
+      ),
+    );
+  });
+
   it("logs in and lands in the first household", async () => {
     const { calls } = setup({
       ...signedOut,

@@ -1,21 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { createHostRouter, createHouseholdLookup, RouterProvider } from "../../router";
+import { ShellRouter } from "../../testing/ShellRouter";
 import { SignUpPage } from "./SignUpPage";
-
-const router = createHostRouter(createHouseholdLookup([]));
 
 const meta: Meta<typeof SignUpPage> = {
   title: "Host/Auth/SignUpPage",
   component: SignUpPage,
   decorators: [
     (Story) => (
-      <RouterProvider router={router}>
+      <ShellRouter>
         <Story />
-      </RouterProvider>
+      </ShellRouter>
     ),
   ],
   args: {
-    signInHref: "/login",
     onSignUp: async () => null,
   },
 };

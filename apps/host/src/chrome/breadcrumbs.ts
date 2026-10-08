@@ -1,11 +1,13 @@
 import { Crumb } from "@hostyara/contracts";
-import { buildAppPath, Household, paths, Route } from "../router";
+import { LinkOptions, linkOptions } from "@tanstack/react-router";
+import { buildAppPath, Household, Route } from "../router";
 import { SETTINGS_TITLES, shellPageTitle } from "../pages/shellPages";
 
 export interface Breadcrumb {
   label: string;
-  // У последнего звена ссылки нет.
-  href?: string;
+  // Типизированный маршрут shell или адрес внутри приложения (строка — из
+  // sdk.nav). У последнего звена ссылки нет.
+  link?: LinkOptions | string;
 }
 
 export interface BreadcrumbContext {
@@ -24,6 +26,23 @@ function resolveAppHref(hidSegment: string, appId: string, href: string | undefi
   return buildAppPath(hidSegment, appId, href);
 }
 
+const settingsSection = (hid: string, section: string): LinkOptions => {
+  switch (section) {
+    case "members":
+      return linkOptions({ to: "/h/$hid/settings/members", params: { hid } });
+    case "apps":
+      return linkOptions({ to: "/h/$hid/settings/apps", params: { hid } });
+    case "notifications":
+      return linkOptions({ to: "/h/$hid/settings/notifications", params: { hid } });
+    case "shared":
+      return linkOptions({ to: "/h/$hid/settings/shared", params: { hid } });
+    case "data":
+      return linkOptions({ to: "/h/$hid/settings/data", params: { hid } });
+    default:
+      return linkOptions({ to: "/h/$hid/settings/general", params: { hid } });
+  }
+};
+
 function withoutLastLink(trail: Breadcrumb[]): Breadcrumb[] {
   if (trail.length === 0) return trail;
   const last = trail[trail.length - 1];
@@ -35,7 +54,11 @@ function spaceTrail(
   context: BreadcrumbContext,
 ): Breadcrumb[] {
   const { hidSegment, area } = route;
-  const root = { label: context.household?.name || "Пространство", href: paths.space(hidSegment) };
+  const hid = hidSegment;
+  const root = {
+    label: context.household?.name || "Пространство",
+    link: linkOptions({ to: "/h/$hid", params: { hid } }),
+  };
   const title = shellPageTitle(route) ?? "";
 
   switch (area.kind) {
@@ -44,30 +67,40 @@ function spaceTrail(
     case "app":
       return [
         root,
-        { label: context.appName(area.appId), href: paths.app(hidSegment, area.appId) },
+        {
+          label: context.appName(area.appId),
+          link: linkOptions({
+            to: "/h/$hid/a/$appId/$",
+            params: { hid, appId: area.appId, _splat: "" },
+          }),
+        },
         ...context.appTrail.map((crumb) => ({
           label: crumb.label,
-          href: resolveAppHref(hidSegment, area.appId, crumb.href),
+          link: resolveAppHref(hidSegment, area.appId, crumb.href),
         })),
       ];
     case "inbox":
       return area.eventId
-        ? [root, { label: "Входящие", href: paths.inbox(hidSegment) }, { label: title }]
+        ? [
+            root,
+            { label: "Входящие", link: linkOptions({ to: "/h/$hid/inbox", params: { hid } }) },
+            { label: title },
+          ]
         : [root, { label: title }];
     case "catalog":
       return area.appId
         ? [
             root,
-            { label: "Каталог", href: paths.catalog(hidSegment) },
+            { label: "Каталог", link: linkOptions({ to: "/h/$hid/catalog", params: { hid } }) },
             { label: context.appName(area.appId) },
           ]
         : [root, { label: title }];
     case "settings": {
-      const settings = { label: "Настройки", href: paths.settings(hidSegment) };
+      const settings = { label: "Настройки", link: settingsSection(hid, "general") };
       if (area.section === null) return [root, settings];
       const section = {
         label: SETTINGS_TITLES[area.section],
-        href: paths.settings(hidSegment, area.section),
+        link: settingsSection(hid, area.section),
       };
       return area.itemId ? [root, settings, section, { label: title }] : [root, settings, section];
     }
@@ -84,17 +117,23 @@ export function buildBreadcrumbs(route: Route, context: BreadcrumbContext): Brea
     case "space":
       return withoutLastLink(spaceTrail(route, context));
     case "account":
-      return withoutLastLink([{ label: "Аккаунт", href: paths.account() }, { label: title }]);
+      return withoutLastLink([
+        { label: "Аккаунт", link: linkOptions({ to: "/account" }) },
+        { label: title },
+      ]);
     case "spaces":
       return withoutLastLink(
         route.section === "new"
-          ? [{ label: "Мои пространства", href: paths.spaces() }, { label: title }]
+          ? [{ label: "Мои пространства", link: linkOptions({ to: "/spaces" }) }, { label: title }]
           : [{ label: title }],
       );
     case "dev":
       return withoutLastLink(
         route.section === "registry" && route.appId
-          ? [{ label: "Реестр ремоутов", href: paths.devRegistry() }, { label: route.appId }]
+          ? [
+              { label: "Реестр ремоутов", link: linkOptions({ to: "/dev/registry" }) },
+              { label: route.appId },
+            ]
           : [{ label: title }],
       );
     case "not-found":

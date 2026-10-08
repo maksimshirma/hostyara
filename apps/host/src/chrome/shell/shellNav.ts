@@ -1,11 +1,12 @@
-import { paths, Route } from "../../router";
+import { LinkOptions, linkOptions } from "@tanstack/react-router";
+import { Route } from "../../router";
 
 export type NavIcon = "home" | "search" | "inbox" | "catalog" | "settings" | "app";
 
 export interface NavItem {
   id: string;
   label: string;
-  href: string;
+  link: LinkOptions;
   icon: NavIcon;
   selected: boolean;
 }
@@ -27,36 +28,41 @@ function areaOf(route: Route): SpaceAreaKind | `app:${string}` | null {
 }
 
 // Навигация shell для текущего адреса. hidSegment — открытое пространство
-// (или пространство по умолчанию вне /h/:hid); ссылки строятся только
-// через paths.
+// (или пространство по умолчанию вне /h/:hid).
 export function buildShellNav(
   route: Route,
   hidSegment: string,
   apps: Array<{ id: string; name: string }>,
 ): ShellNav {
   const current = areaOf(route);
-  const item = (area: SpaceAreaKind, label: string, href: string): NavItem => ({
+  const params = { hid: hidSegment };
+  const item = (area: SpaceAreaKind, label: string, link: LinkOptions): NavItem => ({
     id: area,
     label,
-    href,
+    link,
     icon: area,
     selected: current === area,
   });
 
   return {
     sections: [
-      item("home", "Дом", paths.space(hidSegment)),
-      item("search", "Поиск", paths.search(hidSegment)),
-      item("inbox", "Входящие", paths.inbox(hidSegment)),
-      item("catalog", "Каталог", paths.catalog(hidSegment)),
+      item("home", "Дом", linkOptions({ to: "/h/$hid", params })),
+      item("search", "Поиск", linkOptions({ to: "/h/$hid/search", params })),
+      item("inbox", "Входящие", linkOptions({ to: "/h/$hid/inbox", params })),
+      item("catalog", "Каталог", linkOptions({ to: "/h/$hid/catalog", params })),
     ],
     apps: apps.map((app) => ({
       id: `app:${app.id}`,
       label: app.name,
-      href: paths.app(hidSegment, app.id),
+      link: linkOptions({
+        to: "/h/$hid/a/$appId/$",
+        params: { hid: hidSegment, appId: app.id, _splat: "" },
+      }),
       icon: "app",
       selected: current === `app:${app.id}`,
     })),
-    secondary: [item("settings", "Настройки", paths.settings(hidSegment))],
+    secondary: [
+      item("settings", "Настройки", linkOptions({ to: "/h/$hid/settings/general", params })),
+    ],
   };
 }

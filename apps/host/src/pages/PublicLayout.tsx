@@ -1,11 +1,10 @@
 import { ReactNode } from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Toolbar from "@mui/material/Toolbar";
 import { BrandMark } from "../components/BrandMark";
-import { paths, useRouterLinkClick } from "../router";
+import { RouterButton } from "../components/RouterLink";
 import { ColorModeIconDropdown } from "../theme";
 
 // Минимальный хром вне shell: публичные страницы (приглашение,
@@ -18,7 +17,6 @@ export function PublicLayout({
   children: ReactNode;
   showSignUp?: boolean;
 }) {
-  const goSignUp = useRouterLinkClick(paths.signup());
   return (
     <Box sx={{ minHeight: "100dvh", bgcolor: "background.default" }}>
       <AppBar
@@ -37,9 +35,9 @@ export function PublicLayout({
           </Box>
           <ColorModeIconDropdown />
           {showSignUp && (
-            <Button variant="contained" size="small" href={paths.signup()} onClick={goSignUp}>
+            <RouterButton variant="contained" size="small" to="/signup">
               Зарегистрироваться
-            </Button>
+            </RouterButton>
           )}
         </Toolbar>
       </AppBar>

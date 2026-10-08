@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { routeForPath } from "../../router";
+import { ShellRouter } from "../../testing/ShellRouter";
 import Typography from "@mui/material/Typography";
-import { createHostRouter, createHouseholdLookup, parseRoute, RouterProvider } from "../../router";
 import { buildShellNav } from "./shellNav";
 import { ShellLayout } from "./ShellLayout";
 
@@ -8,8 +9,7 @@ const households = [
   { hid: "demo", name: "Семья Ивановых" },
   { hid: "dacha", name: "Дача" },
 ];
-const router = createHostRouter(createHouseholdLookup(households));
-const route = parseRoute("/h/demo-semya-ivanovyh/a/recipes");
+const route = routeForPath("/h/demo-semya-ivanovyh/a/recipes");
 
 const meta: Meta<typeof ShellLayout> = {
   title: "Host/Shell/ShellLayout",
@@ -17,9 +17,9 @@ const meta: Meta<typeof ShellLayout> = {
   parameters: { layout: "fullscreen" },
   decorators: [
     (Story) => (
-      <RouterProvider router={router}>
+      <ShellRouter>
         <Story />
-      </RouterProvider>
+      </ShellRouter>
     ),
   ],
   args: {

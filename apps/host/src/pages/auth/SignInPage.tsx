@@ -11,11 +11,12 @@ import { CredentialsErrors, hasErrors, validateSignIn } from "./validateCredenti
 export interface SignInPageProps {
   // Почему человек снова на входе (например, сессия истекла).
   notice: string | null;
-  signUpHref: string;
+  // Исходный адрес (_from) передаётся между входом и регистрацией.
+  returnAddress?: string;
   onLogin(email: string, password: string): Promise<AuthFailure | null>;
 }
 
-export function SignInPage({ notice, signUpHref, onLogin }: SignInPageProps) {
+export function SignInPage({ notice, returnAddress, onLogin }: SignInPageProps) {
   const [errors, setErrors] = useState<CredentialsErrors>({});
   const { pending, failure, submit } = useSubmit(onLogin);
 
@@ -56,7 +57,11 @@ export function SignInPage({ notice, signUpHref, onLogin }: SignInPageProps) {
       </AuthForm>
       <Typography sx={{ textAlign: "center" }}>
         Нет аккаунта?{" "}
-        <RouterLink href={signUpHref} variant="body2">
+        <RouterLink
+          to="/signup"
+          search={returnAddress ? { _from: returnAddress } : {}}
+          variant="body2"
+        >
           Зарегистрироваться
         </RouterLink>
       </Typography>

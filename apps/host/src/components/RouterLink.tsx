@@ -1,18 +1,8 @@
-import Link, { LinkProps } from "@mui/material/Link";
-import { useRouterLinkClick } from "../router";
+import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
+import { createLink } from "@tanstack/react-router";
 
-export type RouterLinkProps = Omit<LinkProps, "href"> & { href: string };
-
-export function RouterLink({ href, onClick, ...rest }: RouterLinkProps) {
-  const navigate = useRouterLinkClick(href);
-  return (
-    <Link
-      href={href}
-      onClick={(event) => {
-        onClick?.(event);
-        navigate(event);
-      }}
-      {...rest}
-    />
-  );
-}
+// Typed links to shell routes: real <a href>, plain clicks go through the
+// router, modified clicks ("open in new tab") stay with the browser.
+export const RouterLink = createLink(Link);
+export const RouterButton = createLink(Button);

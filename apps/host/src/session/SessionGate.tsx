@@ -1,41 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { RouterProvider as TanStackRouterProvider } from "@tanstack/react-router";
 import { User } from "@hostyara/contracts";
 import { AccessEventSource, createAccessTracker } from "../api/accessTracker";
 import { createBffClient } from "../api/bffClient";
-import { HostChrome } from "../chrome/HostChrome";
-import {
-  createHostRouter,
-  createHouseholdLookup,
-  FROM_PARAM,
-  Household,
-  parseRoute,
-  paths,
-  RouterProvider,
-  useRouterLocation,
-} from "../router";
-import { decideRouteRedirect, RedirectSession } from "./decideRouteRedirect";
-import { AuthFailure, createSessionApi, LoginOutcome } from "./sessionApi";
-import { SignInPage } from "../pages/auth/SignInPage";
+import { attachRouteComponents } from "../app/routeComponents";
 import {
   CreateHouseholdPage,
   TwoFactorPage,
   UnavailablePage,
 } from "../pages/auth/SessionStepPages";
-import { SignUpPage } from "../pages/auth/SignUpPage";
-import { PublicLayout } from "../pages/PublicLayout";
-import { ShellPage } from "../pages/ShellPage";
-import { pageChrome } from "../pages/shellPages";
-
-type SessionState =
-  | { kind: "checking" }
-  // logout — явный выход; expired — сессию потеряли посреди работы;
-  // initial — сессии не было с самого начала.
-  | { kind: "signed-out"; reason: "initial" | "expired" | "logout" }
-  | { kind: "two-factor" }
-  | { kind: "signed-in"; user: User; households: Household[] }
-  | { kind: "unavailable" };
-
-const SESSION_ENDED_NOTICE = "Сессия завершена — войдите снова";
+import { createHostHistory, routeForPath, useHistoryLocation } from "../router";
+import { createAppRouter } from "../router/appRouter";
+import { decideRouteRedirect, RedirectSession } from "../router/redirectRules";
+import {
+  GateScreen,
+  GateScreenProvider,
+  OUTLET,
+  SessionProvider,
+  SessionState,
+  SessionView,
+} from "./SessionContext";
+import { AuthFailure, createSessionApi, LoginOutcome } from "./sessionApi";
 
 export interface SessionGateProps {
   // Test seams; default to the browser's own.
@@ -62,15 +47,18 @@ function toRedirectSession(state: SessionState): RedirectSession {
 // stream's `session.ended` do the same.
 export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
   const [state, setState] = useState<SessionState>({ kind: "checking" });
-  const householdsRef = useRef<Household[]>([]);
-  const [router] = useState(() =>
-    createHostRouter({
-      resolve: (hid) => createHouseholdLookup(householdsRef.current).resolve(hid),
-    }),
-  );
-  const location = useRouterLocation(router);
-  const route = useMemo(() => parseRoute(location.pathname), [location.pathname]);
-  const redirect = decideRouteRedirect(route, location, toRedirectSession(state));
+  const [history] = useState(() => createHostHistory());
+  const [appRouter] = useState(() => {
+    attachRouteComponents();
+    return createAppRouter(history);
+  });
+  const location = useHistoryLocation(history);
+  const route = useMemo(() => routeForPath(location.pathname), [location.pathname]);
+  const session = useMemo(() => toRedirectSession(state), [state]);
+  const routerContext = useMemo(() => ({ session }), [session]);
+  // TanStack performs the redirect (root beforeLoad); until it lands, don't
+  // render the screen the person is about to be taken away from.
+  const redirect = decideRouteRedirect(route, location, session);
   const signOutLocally = useCallback(
     () =>
       setState((current) =>
@@ -86,17 +74,11 @@ export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
 
   useEffect(() => () => accessTracker.close(), [accessTracker]);
 
-  useEffect(() => router.attach(), [router]);
-
-  const households = state.kind === "signed-in" ? state.households : null;
+  // Re-runs the route guards with the new session (sign-in, sign-out,
+  // households loaded or created).
   useEffect(() => {
-    householdsRef.current = households ?? [];
-    router.canonicalize();
-  }, [households, router]);
-
-  useEffect(() => {
-    if (redirect) router.navigate(redirect, { replace: true });
-  }, [redirect, router]);
+    void appRouter.invalidate();
+  }, [appRouter, session]);
 
   const enter = useCallback(
     async (user: User) => {
@@ -139,38 +121,32 @@ export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
     }
   }
 
-  // Вход и регистрация передают друг другу исходный адрес.
-  const returnAddress = new URLSearchParams(location.search).get(FROM_PARAM) ?? undefined;
+  const view: SessionView = {
+    state,
+    bff,
+    accessTracker,
+    login: async (email, password) => complete(await sessionApi.login(email, password)),
+    signUp: async (name, email, password) =>
+      complete(await sessionApi.signUp(name, email, password)),
+    logout: () => void logout(),
+  };
 
-  return <RouterProvider router={router}>{redirect ? null : renderScreen()}</RouterProvider>;
+  return (
+    <SessionProvider value={view}>
+      <GateScreenProvider value={redirect ? null : gateScreen()}>
+        <TanStackRouterProvider router={appRouter} context={routerContext} />
+      </GateScreenProvider>
+    </SessionProvider>
+  );
 
-  function renderScreen() {
+  // Session steps without an address of their own; OUTLET lets the matched
+  // route draw the page.
+  function gateScreen(): GateScreen {
     switch (state.kind) {
       case "checking":
         return null;
       case "unavailable":
         return <UnavailablePage onRetry={() => void restore()} />;
-      case "signed-out":
-        if (route.kind === "login") {
-          return (
-            <SignInPage
-              notice={state.reason === "expired" ? SESSION_ENDED_NOTICE : null}
-              signUpHref={paths.signup({ from: returnAddress })}
-              onLogin={async (email, password) => complete(await sessionApi.login(email, password))}
-            />
-          );
-        }
-        if (route.kind === "signup") {
-          return (
-            <SignUpPage
-              signInHref={paths.login({ from: returnAddress })}
-              onSignUp={async (name, email, password) =>
-                complete(await sessionApi.signUp(name, email, password))
-              }
-            />
-          );
-        }
-        return renderStandalonePage(true);
       case "two-factor":
         return (
           <TwoFactorPage
@@ -184,43 +160,26 @@ export function SessionGate({ fetch, createEventSource }: SessionGateProps) {
             onCancel={() => setState({ kind: "signed-out", reason: "initial" })}
           />
         );
-      case "signed-in":
-        if (pageChrome(route, location.pathname) === "standalone") {
-          return renderStandalonePage(false);
-        }
-        if (state.households.length === 0) {
-          return (
-            <CreateHouseholdPage
-              onCreate={async (name) => {
-                try {
-                  const household = await sessionApi.createHousehold(name);
-                  setState({ ...state, households: [household] });
-                  return null;
-                } catch {
-                  return "unavailable";
-                }
-              }}
-            />
-          );
-        }
+      case "signed-in": {
+        // An invitation or a shared link opens even before the first household.
+        const isPublicPage = route.kind === "invite" || route.kind === "share";
+        if (state.households.length > 0 || isPublicPage) return OUTLET;
         return (
-          <HostChrome
-            bff={bff}
-            accessTracker={accessTracker}
-            user={state.user}
-            households={state.households}
-            onLogout={() => void logout()}
+          <CreateHouseholdPage
+            onCreate={async (name) => {
+              try {
+                const household = await sessionApi.createHousehold(name);
+                setState({ ...state, households: [household] });
+                return null;
+              } catch {
+                return "unavailable";
+              }
+            }}
           />
         );
+      }
+      case "signed-out":
+        return OUTLET;
     }
-  }
-
-  // Публичные страницы и 404 вне пространства — без меню shell.
-  function renderStandalonePage(signedOut: boolean) {
-    return (
-      <PublicLayout showSignUp={signedOut && route.kind !== "not-found"}>
-        <ShellPage route={route} />
-      </PublicLayout>
-    );
   }
 }

@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { parseRoute } from "../../../router";
+import { routeForPath } from "../../../router";
 import { ShellRouter } from "../../../testing/ShellRouter";
 import { buildShellNav } from "../shellNav";
 import { ShellLayout } from "../ShellLayout";
@@ -13,7 +13,7 @@ const USER = { id: "u1", name: "Анна Иванова", email: "anna@example.c
 
 function renderShell(pathname: string, onLogout = jest.fn()) {
   window.history.replaceState(null, "", pathname);
-  const route = parseRoute(pathname);
+  const route = routeForPath(pathname);
   render(
     <ShellLayout
       nav={buildShellNav(route, "demo-semya-ivanovyh", [{ id: "recipes", name: "Рецепты" }])}
@@ -24,7 +24,7 @@ function renderShell(pathname: string, onLogout = jest.fn()) {
     >
       <p>Контент</p>
     </ShellLayout>,
-    { wrapper: ({ children }) => <ShellRouter households={HOUSEHOLDS}>{children}</ShellRouter> },
+    { wrapper: ShellRouter },
   );
   return onLogout;
 }

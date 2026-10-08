@@ -6,7 +6,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { User } from "@hostyara/contracts";
 import { RouterLink } from "../../components/RouterLink";
-import { paths } from "../../router";
 
 function initialsOf(name: string): string {
   return name
@@ -34,7 +33,7 @@ export function UserCard({ user, onLogout }: UserCardProps) {
       </Avatar>
       <Box sx={{ mr: "auto", minWidth: 0 }}>
         <RouterLink
-          href={paths.account()}
+          to="/account"
           underline="none"
           color="text.primary"
           variant="body2"

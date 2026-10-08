@@ -2,6 +2,7 @@ import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import Breadcrumbs, { breadcrumbsClasses } from "@mui/material/Breadcrumbs";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
+import { HrefLink } from "../../components/HrefLink";
 import { RouterLink } from "../../components/RouterLink";
 import { Breadcrumb } from "../breadcrumbs";
 
@@ -17,6 +18,12 @@ const StyledBreadcrumbs = styled(Breadcrumbs)(({ theme }) => ({
   },
 }));
 
+const LINK_STYLE = {
+  variant: "body1",
+  underline: "hover",
+  sx: { color: "text.secondary" },
+} as const;
+
 export function NavbarBreadcrumbs({ trail }: { trail: Breadcrumb[] }) {
   if (trail.length === 0) return null;
   return (
@@ -25,14 +32,12 @@ export function NavbarBreadcrumbs({ trail }: { trail: Breadcrumb[] }) {
       separator={<NavigateNextRoundedIcon fontSize="small" />}
     >
       {trail.map((crumb, index) =>
-        crumb.href ? (
-          <RouterLink
-            key={index}
-            href={crumb.href}
-            variant="body1"
-            underline="hover"
-            sx={{ color: "text.secondary" }}
-          >
+        typeof crumb.link === "string" ? (
+          <HrefLink key={index} href={crumb.link} {...LINK_STYLE}>
+            {crumb.label}
+          </HrefLink>
+        ) : crumb.link ? (
+          <RouterLink key={index} {...crumb.link} {...LINK_STYLE}>
             {crumb.label}
           </RouterLink>
         ) : (

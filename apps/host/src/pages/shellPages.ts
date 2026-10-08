@@ -63,12 +63,3 @@ export function shellPageTitle(route: Route): string | null {
       return null;
   }
 }
-
-// Где рисуется страница: внутри shell (меню, крошки) или отдельно —
-// публичные страницы не раскрывают пространство (IA §5), а 404 вне /h/
-// не относится ни к какому пространству.
-export function pageChrome(route: Route, pathname: string): "shell" | "standalone" {
-  if (route.kind === "invite" || route.kind === "share") return "standalone";
-  if (route.kind === "not-found" && !pathname.startsWith("/h/")) return "standalone";
-  return "shell";
-}

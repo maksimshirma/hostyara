@@ -7,7 +7,8 @@ import ListItemText from "@mui/material/ListItemText";
 import ListSubheader from "@mui/material/ListSubheader";
 import MenuItem from "@mui/material/MenuItem";
 import Select, { selectClasses } from "@mui/material/Select";
-import { Household, paths, useHostRouter } from "../../router";
+import { useNavigate } from "@tanstack/react-router";
+import { canonicalizeHidSegment, Household } from "../../router";
 
 const CREATE_SPACE = "__create__";
 
@@ -38,10 +39,18 @@ export interface SpaceSwitcherProps {
 // Переключатель пространства (IA §8) — по мотивам SelectContent из шаблона
 // MUI dashboard.
 export function SpaceSwitcher({ households, currentHid }: SpaceSwitcherProps) {
-  const router = useHostRouter();
+  const navigate = useNavigate();
 
   function handleChange(value: string) {
-    router.navigate(value === CREATE_SPACE ? paths.newSpace() : paths.space(value));
+    if (value === CREATE_SPACE) {
+      void navigate({ to: "/spaces/new" });
+      return;
+    }
+    const household = households.find((candidate) => candidate.hid === value);
+    void navigate({
+      to: "/h/$hid",
+      params: { hid: canonicalizeHidSegment(value, household?.name) },
+    });
   }
 
   return (

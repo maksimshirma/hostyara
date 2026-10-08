@@ -10,8 +10,9 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import ListSubheader from "@mui/material/ListSubheader";
-import { ReactNode } from "react";
-import { useRouterLinkClick } from "../../router";
+import { forwardRef, ReactNode } from "react";
+import { ListItemButtonProps } from "@mui/material/ListItemButton";
+import { createLink } from "@tanstack/react-router";
 import { NavIcon, NavItem } from "./shellNav";
 
 const SECTION_ICONS: Record<Exclude<NavIcon, "app">, ReactNode> = {
@@ -49,22 +50,32 @@ function AppInitial({ label }: { label: string }) {
   );
 }
 
+const ListItemAnchor = forwardRef<HTMLAnchorElement, ListItemButtonProps<"a">>(
+  function ListItemAnchor(props, ref) {
+    return <ListItemButton component="a" ref={ref} {...props} />;
+  },
+);
+
+// A real <a href> menu item whose plain clicks go through the router.
+const ListItemLink = createLink(ListItemAnchor);
+
 function NavListItem({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
-  const handleClick = useRouterLinkClick(item.href, onNavigate);
   return (
     <ListItem disablePadding sx={{ display: "block" }}>
-      <ListItemButton
-        component="a"
-        href={item.href}
+      <ListItemLink
+        {...item.link}
+        // Which item is current is the shell's decision (buildShellNav):
+        // "Дом" must not light up for every page under /h/$hid.
+        activeOptions={{ exact: true }}
         selected={item.selected}
         aria-current={item.selected ? "page" : undefined}
-        onClick={handleClick}
+        onClick={onNavigate}
       >
         <ListItemIcon>
           {item.icon === "app" ? <AppInitial label={item.label} /> : SECTION_ICONS[item.icon]}
         </ListItemIcon>
         <ListItemText primary={item.label} />
-      </ListItemButton>
+      </ListItemLink>
     </ListItem>
   );
 }
