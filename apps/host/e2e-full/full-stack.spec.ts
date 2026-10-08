@@ -5,7 +5,7 @@ test("register, create a household and reach the app's own backend from MF and i
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Нет аккаунта? Зарегистрироваться" }).click();
+  await page.getByRole("link", { name: "Зарегистрироваться" }).click();
   await page.getByLabel("Имя").fill("Анна");
   await page.getByLabel("Почта").fill(email("anna"));
   await page.getByLabel("Пароль").fill(PASSWORD);
