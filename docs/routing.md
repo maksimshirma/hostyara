@@ -7,17 +7,48 @@
 ```
 
 Everything up to and including `a/:appId` belongs to the shell; everything
-after belongs to your app. Parsed by `apps/host/src/router/route.ts`:
+after belongs to your app. The shell's whole route table (IA §4) is parsed
+by `parseRoute` in `apps/host/src/router/route.ts`:
 
-```ts
-export type SpaceArea =
-  | { kind: "app"; appId: string; appPath: string; basename: string }
-  | { kind: "catalog" | "inbox" | "search" | "settings" }
-  | { kind: "home" };
+| Path                                    | `Route`                                               |
+| --------------------------------------- | ----------------------------------------------------- |
+| `/`                                     | `{ kind: "root" }`                                    |
+| `/login`, `/signup`                     | `{ kind: "login" }`, `{ kind: "signup" }`             |
+| `/invite/:token`                        | `{ kind: "invite", token }`                           |
+| `/s/:token[/:slug]`                     | `{ kind: "share", token, slug? }`                     |
+| `/account[/security\|/sessions]`        | `{ kind: "account", section }`                        |
+| `/spaces`, `/spaces/new`                | `{ kind: "spaces", section: "list" \| "new" }`        |
+| `/h/:hid`                               | `{ kind: "space", area: { kind: "home" } }`           |
+| `/h/:hid/search`                        | area `{ kind: "search" }`                             |
+| `/h/:hid/inbox[/:eventId]`              | area `{ kind: "inbox", eventId? }`                    |
+| `/h/:hid/catalog[/:appId]`              | area `{ kind: "catalog", appId? }`                    |
+| `/h/:hid/settings[/:section[/:itemId]]` | area `{ kind: "settings", section \| null, itemId? }` |
+| `/h/:hid/a/:appId/*`                    | area `{ kind: "app", appId, appPath, basename }`      |
+| `/dev/registry[/:appId]`, `/dev/health` | `{ kind: "dev", section, appId? }`                    |
+| anything else                           | `{ kind: "not-found" }`                               |
 
-export type Route =
-  { kind: "space"; hid: string; hidSegment: string; area: SpaceArea } | { kind: "not-found" };
-```
+Settings sections are `general`, `members`, `apps`, `notifications`,
+`shared`, `data`; only `members` and `apps` take an `itemId`. A bare
+`settings` parses with `section: null` — the shell redirects it to
+`general`. Shell sections never accept extra trailing segments.
+
+`routeZone(route)` classifies a route as `public` (no session needed),
+`personal` (the person's account, outside any household), `space` or
+`platform`.
+
+Shell links are built with `paths` (`apps/host/src/router/paths.ts`), the
+inverse of `parseRoute` — never by concatenating strings by hand.
+`paths.login({ from })` puts the original address in the shell-owned
+`_from` query parameter.
+
+`SessionGate` (`apps/host/src/session/`) owns the one `HostRouter` and
+decides redirects with `decideRouteRedirect`: no session + non-public route
+→ `/login?_from=…`; session + `/login`/`/signup` → `_from` or the first
+household; `/` → first household; bare `settings` → `settings/general`.
+
+Reserved root segments (`RESERVED_ROOT_SEGMENTS`) never match the shape of
+a language code (`^[a-z]{2}(-[a-z]{2})?$`): the marketing site shares the
+root namespace via `/:lang/`.
 
 `hidSegment` is not the raw household id — it's the id optionally followed
 by a slugified household name (`hid-slugified-name`), canonicalized by
@@ -53,6 +84,7 @@ export interface HostRouter {
   navigate(to: string, opts?: { replace?: boolean }): void;
   subscribe(callback: () => void): () => void;
   attach(): () => void;
+  canonicalize(): void; // re-run the hid redirect once the household list changes
 }
 ```
 
