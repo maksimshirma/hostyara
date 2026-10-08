@@ -1,13 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import "@hostyara/ui/src/tokens";
 import App from "./App";
-import { ThemeProvider } from "./theme";
+import { AppTheme } from "./theme";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ThemeProvider>
+    <AppTheme>
       <App />
-    </ThemeProvider>
+    </AppTheme>
   </React.StrictMode>,
 );
