@@ -37,12 +37,40 @@ describe("createHostRouter", () => {
     detach();
   });
 
-  it("falls back to the bare hid when the household is unknown", () => {
+  it("leaves the hid tail alone when the household is unknown", () => {
     setLocation("/h/unknown-old-name/a/recipes");
     const router = createHostRouter(households);
     const detach = router.attach();
 
-    expect(window.location.pathname).toBe("/h/unknown/a/recipes");
+    expect(window.location.pathname).toBe("/h/unknown-old-name/a/recipes");
+    detach();
+  });
+
+  it("falls back to the bare hid for a known household without a name", () => {
+    setLocation("/h/noname-old-name");
+    const router = createHostRouter({ resolve: (hid) => ({ hid, name: "" }) });
+    const detach = router.attach();
+
+    expect(window.location.pathname).toBe("/h/noname");
+    detach();
+  });
+
+  it("canonicalize re-applies the redirect once the lookup learns the household", () => {
+    setLocation("/h/late-old-name");
+    let known = false;
+    const router = createHostRouter({
+      resolve: (hid) => (known ? { hid, name: "Дача" } : undefined),
+    });
+    const detach = router.attach();
+    const listener = jest.fn();
+    router.subscribe(listener);
+    expect(window.location.pathname).toBe("/h/late-old-name");
+
+    known = true;
+    router.canonicalize();
+
+    expect(window.location.pathname).toBe("/h/late-dacha");
+    expect(listener).toHaveBeenCalled();
     detach();
   });
 

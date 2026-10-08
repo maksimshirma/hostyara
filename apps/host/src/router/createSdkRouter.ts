@@ -20,6 +20,11 @@ function toAbsolutePath(basename: string, to: string): string {
 // here keeps location/navigate/link correct with no extra wiring on the
 // HostChrome side — every read already reflects window.location as of the
 // moment it's called.
+function ownsCurrentRoute(hostRouter: HostRouter, appId: string): boolean {
+  const route = hostRouter.getRoute();
+  return route.kind === "space" && route.area.kind === "app" && route.area.appId === appId;
+}
+
 export function getLiveBasename(hostRouter: HostRouter, appId: string): string {
   const route = hostRouter.getRoute();
   if (route.kind === "space" && route.area.kind === "app" && route.area.appId === appId) {
@@ -47,6 +52,11 @@ export function createSdkRouter(hostRouter: HostRouter, appId: string): SdkRoute
       return getRelativeLocation(hostRouter, appId);
     },
     navigate(to, opts) {
+      // After Back/Forward away from the app it is still mounted until the
+      // shell unmounts it, and its framework router may react to the
+      // foreign location by navigating "home". Such a call must not
+      // rewrite the address the person just went back to.
+      if (!ownsCurrentRoute(hostRouter, appId)) return;
       hostRouter.navigate(toAbsolutePath(getLiveBasename(hostRouter, appId), to), opts);
     },
     back() {

@@ -21,6 +21,10 @@ export interface HostRouter {
   // mount→cleanup→mount otherwise fires a bare teardown with no matching
   // re-setup and permanently drops the listener.
   attach(): () => void;
+  // Re-applies the canonical hid redirect to the current entry — for when
+  // the household list the lookup reads from has changed (e.g. loaded
+  // after sign-in).
+  canonicalize(): void;
 }
 
 // IA §2: старая ссылка на пространство продолжает работать и сама
@@ -32,8 +36,12 @@ function redirectToCanonicalIfNeeded(households: HouseholdLookup): void {
   const route = parseRoute(window.location.pathname);
   if (route.kind !== "space") return;
 
+  // Неизвестное пространство (список ещё не загружен — до входа — или
+  // человек в нём не состоит) не трогаем: срезать хвост без знания
+  // названия значит потерять его до того, как список появится.
   const household = households.resolve(route.hid);
-  const canonicalHidSegment = canonicalizeHidSegment(route.hid, household?.name);
+  if (!household) return;
+  const canonicalHidSegment = canonicalizeHidSegment(route.hid, household.name);
   if (canonicalHidSegment === route.hidSegment) return;
 
   const canonicalPathname = window.location.pathname.replace(
@@ -98,6 +106,10 @@ export function createHostRouter(households: HouseholdLookup): HostRouter {
       redirectToCanonicalIfNeeded(households);
       window.addEventListener("popstate", handlePopState);
       return () => window.removeEventListener("popstate", handlePopState);
+    },
+    canonicalize() {
+      redirectToCanonicalIfNeeded(households);
+      notify();
     },
   };
 }

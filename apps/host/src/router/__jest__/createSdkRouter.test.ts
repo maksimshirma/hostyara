@@ -20,6 +20,7 @@ function createFakeHostRouter(
       return () => listeners.delete(callback);
     }),
     attach: jest.fn(() => () => {}),
+    canonicalize: jest.fn(),
     setLocation(loc) {
       location = loc;
       for (const listener of listeners) listener();
@@ -140,5 +141,18 @@ describe("createSdkRouter", () => {
     });
 
     expect(sdkRouter.location.pathname).toBe("/r/8421");
+  });
+
+  it("ignores navigate from an app the current route has moved past", () => {
+    const hostRouter = createFakeHostRouter({
+      pathname: "/h/f3k2xp-semya-ivanovyh/a/budget",
+      search: "",
+      hash: "",
+    });
+    const sdkRouter = createSdkRouter(hostRouter, APP_ID);
+
+    sdkRouter.navigate("/", { replace: true });
+
+    expect(hostRouter.navigate).not.toHaveBeenCalled();
   });
 });
