@@ -147,7 +147,6 @@ hostyara/
 ├── packages/
 │   ├── contracts/            # @hostyara/contracts — AppModule, HostSDK, AppManifest, ...
 │   ├── sdk/                  # @hostyara/sdk — re-exports the contracts' SDK types
-│   ├── ui/                   # @hostyara/ui — design system (tokens, theme, React components)
 │   ├── lifecycle/            # @hostyara/lifecycle — createLifecycle(mount/unmount) helper
 │   ├── event-bus/            # @hostyara/event-bus — HostChannel (in-memory + MessagePort)
 │   ├── registry/             # @hostyara/registry — AppRegistry (resolve by id, contract check)
@@ -200,7 +199,6 @@ is just a map of where to look.
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | `@hostyara/contracts`    | The canonical types: `AppModule`, `HostSDK`, `AppManifest`, and their component pieces                                   |
 | `@hostyara/sdk`          | Re-exports the same SDK-related types from `@hostyara/contracts` for convenience                                         |
-| `@hostyara/ui`           | Shared design system: tokens, theme, React components (e.g. `Button`)                                                    |
 | `@hostyara/lifecycle`    | `createLifecycle()` — a tiny helper for defining an `AppModule` with partial overrides                                   |
 | `@hostyara/event-bus`    | `HostChannel` request/on RPC — in-memory and `MessagePort` (cross-realm/iframe) implementations                          |
 | `@hostyara/registry`     | `AppRegistry` — resolves an app id to its manifest, enforcing the contract major version                                 |

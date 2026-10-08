@@ -3,10 +3,7 @@ import { resolve } from "path";
 import { colorSchemes } from "../themePrimitives";
 import { fontFamily, gray, semantic, surfaces, violet } from "../tokens";
 
-const css = readFileSync(
-  resolve(__dirname, "../../../../../packages/ui/src/tokens/tokens.css"),
-  "utf8",
-);
+const css = readFileSync(resolve(__dirname, "../tokens.css"), "utf8");
 
 // Первый блок :root — светлые значения; блок :root[data-theme="dark"] — тёмные.
 const lightBlock = css.slice(0, css.indexOf(':root[data-theme="dark"]'));
@@ -20,7 +17,7 @@ function readVar(block: string, name: string): string {
   return reference ? readVar(css, reference[1]) : value;
 }
 
-describe("theme tokens mirror packages/ui tokens.css", () => {
+describe("theme tokens mirror tokens.css", () => {
   it.each(Object.entries(violet))("primary-%s", (step, value) => {
     expect(readVar(css, `color-primary-${step}`)).toBe(value);
   });

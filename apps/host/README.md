@@ -51,13 +51,15 @@ style isolation, remote failure isolation, the `?_remote=` override).
 
 The host chrome is built with [MUI](https://mui.com/material-ui/) (v9,
 Emotion). `AppTheme` is a port of the `shared-theme` from MUI's templates
-with colours, font and radius taken from `packages/ui` design tokens
-(`src/theme/tokens.ts` mirrors `tokens.css`; a unit test keeps them in sync).
+with colours, font and radius taken from the platform's design tokens in
+`src/theme/tokens.css` (`src/theme/tokens.ts` mirrors them for MUI; a unit
+test keeps the two in sync). The same `tokens.css` is injected into every
+app's shadow root, so remote apps style themselves with the `--ui-*`
+variables.
 Light/dark/system mode goes through MUI's `useColorScheme`
 (`ColorModeIconDropdown`): it writes `data-theme` on `<html>` — the same
 attribute `tokens.css` switches on — and stores the choice in localStorage
-under `theme`. MUI is used only by the host; remote apps keep styling
-themselves with the tokens.
+under `theme`. MUI is used only by the host.
 
 ```tsx
 import { AppTheme, ColorModeIconDropdown } from "./theme";

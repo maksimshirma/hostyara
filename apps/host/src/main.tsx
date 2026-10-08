@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "@hostyara/ui/src/tokens";
+import "./theme/tokens.css";
 import App from "./App";
 import { AppTheme } from "./theme";
 import "./index.css";

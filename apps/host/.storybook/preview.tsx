@@ -1,5 +1,6 @@
 import type { Preview } from "@storybook/react";
-import "@hostyara/ui";
+import "../src/theme/tokens.css";
+import "../src/index.css";
 import { AppTheme } from "../src/theme";
 
 const preview: Preview = {
