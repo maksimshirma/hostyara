@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { User } from "@hostyara/contracts";
-import tokensHref from "@hostyara/ui/src/tokens/tokens.css?url";
+import tokensHref from "../theme/tokens.css?url";
 import { AccessTracker } from "../api/accessTracker";
 import { BffClient } from "../api/bffClient";
 import { createMountManager } from "../mount-manager";

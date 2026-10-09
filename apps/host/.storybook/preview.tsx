@@ -1,5 +1,9 @@
+// Vite's ambient types (CSS imports): .storybook/ isn't part of the src
+// tsconfig, so editors type-check this file without src/vite-env.d.ts.
+/// <reference types="vite/client" />
 import type { Preview } from "@storybook/react";
-import "@hostyara/ui";
+import "../src/theme/tokens.css";
+import "../src/index.css";
 import { AppTheme } from "../src/theme";
 
 const preview: Preview = {

@@ -92,6 +92,11 @@ injects it as an inline `<style>` into your shadow root. It does **not**
 crawl your JS bundle looking for stylesheets; if you forget to list one, it
 silently won't apply.
 
+The platform's design tokens — the `--ui-*` custom properties used above
+(`apps/host/src/theme/tokens.css`) — are injected into your shadow root by
+the host before your own styles, with dark-mode values switching on the
+page's `data-theme`.
+
 There is no `styleRoot` field on the real `HostSDK` for apps that need an
 explicit shadow-root reference (e.g. some CSS-in-JS libraries that portal
 outside the React tree). If your styling approach needs one, you'll need to

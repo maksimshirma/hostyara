@@ -21,7 +21,6 @@
     "@hostyara/lifecycle": "workspace:^",
     "@hostyara/registry": "workspace:^",
     "@hostyara/sdk": "workspace:^",
-    "@hostyara/ui": "workspace:^",
     "@module-federation/runtime": "^2.9.0",
     "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.4.0",

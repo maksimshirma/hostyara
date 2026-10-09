@@ -56,7 +56,7 @@ export const inputsCustomizations: Components<Theme> = {
               variant: "contained",
             },
             style: {
-              // Основная кнопка — фирменный фиолетовый, как Button primary в packages/ui.
+              // Основная кнопка — фирменный фиолетовый (--ui-color-primary).
               color: "white",
               backgroundColor: brand[600],
               backgroundImage: `linear-gradient(to bottom, ${brand[500]}, ${brand[600]})`,
